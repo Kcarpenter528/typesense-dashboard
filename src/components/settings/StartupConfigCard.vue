@@ -86,7 +86,7 @@
               :label="flag.label"
               :placeholder="'placeholder' in flag ? flag.placeholder : String(flag.default)"
               :suffix="'unit' in flag ? flag.unit : undefined"
-              :hint="flag.description"
+              :hint="flag.description.replace(/`/g, '')"
               @update:model-value="setValue(flag, $event)"
             >
               <template #append><help-tip :topic="serverFlagTopic(flag)" /></template>

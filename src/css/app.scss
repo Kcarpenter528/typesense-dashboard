@@ -467,7 +467,8 @@ pre {
   height: 32px;
   border: 1px solid var(--ts-rule-strong);
   border-radius: 8px;
-  background: var(--ts-sheet);
+  // The InstantSearch theme sets a white background that would show in dark mode.
+  background: var(--ts-sheet) !important;
   color: var(--ts-ink);
   box-shadow: none;
   font: inherit;

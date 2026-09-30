@@ -718,7 +718,13 @@ export function resolveTopic(topic: string | HelpTopic): HelpTopic | undefined {
   );
 }
 
-/** Default link text when a link has none. */
+/**
+ * Link text: the link's own label, else the section it points to ("Field parameters"),
+ * else the page ("Tips for filtering"), so two links in one list never read the same.
+ */
 export function linkLabel(link: DocLink): string {
-  return link.label ?? (link.kind === 'api' ? 'API reference' : 'Guide');
+  if (link.label) return link.label;
+  const slug = link.anchor ?? link.page.split('/').pop() ?? link.page;
+  const words = slug.replace(/-/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }

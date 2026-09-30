@@ -100,12 +100,6 @@ const apiMethods = [
 ];
 
 const api = {
-  importFile: (collectionName: any, action: any) => {
-    return ipcRenderer.invoke('importFile', collectionName, action);
-  },
-  importStemmingFile: (id: string) => {
-    return ipcRenderer.invoke('importStemmingFile', id);
-  },
   rejectTLS: (value: any) => {
     return ipcRenderer.invoke('rejectTLS', value);
   },

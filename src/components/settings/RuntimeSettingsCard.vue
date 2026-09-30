@@ -30,7 +30,12 @@
               <code class="text-caption text-grey-7 q-ml-xs">{{ setting.key }}</code>
               <help-tip :topic="serverFlagTopic(setting, true)" />
             </div>
-            <div class="text-caption text-grey-8">{{ setting.description }}</div>
+            <div class="text-caption text-grey-8">
+              <template v-for="(part, i) in setting.description.split('`')" :key="i">
+                <code v-if="i % 2">{{ part }}</code>
+                <template v-else>{{ part }}</template>
+              </template>
+            </div>
             <div class="text-caption text-grey-7">
               Default {{ formatValue(setting, setting.default) }}
               <template v-if="applied[setting.key]">
