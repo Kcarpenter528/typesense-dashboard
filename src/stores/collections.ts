@@ -89,10 +89,6 @@ export const useCollectionsStore = defineStore('collections', {
       }
       useSynonymsStore().load(collection.name);
       useCurationsStore().load(collection.name);
-      if (this.router.currentRoute.value.params?.name) {
-        const params = { ...this.router.currentRoute.value.params, name: collection.name };
-        void this.router.push({ name: this.router.currentRoute.value.name, params });
-      }
     },
     loadCurrentCollectionByName(collectionName: string) {
       const collection = this.collections.find((c) => c.name === collectionName);
@@ -120,6 +116,19 @@ export const useCollectionsStore = defineStore('collections', {
         await this.router.push(`/collection/${collection.name}/schema`);
       } catch (error) {
         node.setError((error as Error).message);
+      }
+    },
+    /** Creates a collection without opening it. Shows any failure in the error banner. */
+    async createCollectionQuietly(schema: CollectionCreateSchema): Promise<boolean> {
+      const node = useNodeStore();
+      try {
+        node.setError(null);
+        const collection = await node.api?.createCollection(schema);
+        if (collection) this.collections = this.collections.concat([collection]);
+        return !!collection;
+      } catch (error) {
+        node.setError((error as Error).message);
+        return false;
       }
     },
     async updateCollection(payload: {

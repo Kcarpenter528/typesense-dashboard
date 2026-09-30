@@ -17,6 +17,16 @@ const routes: RouteRecordRaw[] = [
       { path: 'synonyms', component: () => import('@/pages/Synonyms.vue') },
       { path: 'curations', component: () => import('@/pages/Overrides.vue') },
       {
+        path: 'nl-models',
+        component: () => import('@/pages/AiModels.vue'),
+        props: { kind: 'nl' },
+      },
+      {
+        path: 'conversation-models',
+        component: () => import('@/pages/AiModels.vue'),
+        props: { kind: 'conversation' },
+      },
+      {
         path: 'collection/:name',
         component: () => import('@/layouts/CollectionLayout.vue'),
         children: [

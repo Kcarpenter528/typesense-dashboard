@@ -61,6 +61,18 @@
                 <q-item-section>Copy schema to a new collection</q-item-section>
               </q-item>
               <q-separator />
+              <q-item v-close-popup clickable @click="actions.deleteDocuments(name, 'filter')">
+                <q-item-section avatar>
+                  <q-icon name="sym_s_filter_alt_off" size="18px" />
+                </q-item-section>
+                <q-item-section>Delete documents by filter…</q-item-section>
+              </q-item>
+              <q-item v-close-popup clickable @click="actions.deleteDocuments(name, 'all')">
+                <q-item-section avatar>
+                  <q-icon name="sym_s_delete_sweep" size="18px" />
+                </q-item-section>
+                <q-item-section>Delete all documents…</q-item-section>
+              </q-item>
               <q-item
                 v-close-popup
                 clickable

@@ -2,6 +2,7 @@ import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { useCollectionsStore } from '@/stores/collections';
 import { useDocumentsStore } from '@/stores/documents';
+import DeleteDocumentsDialog from '@/components/collection/DeleteDocumentsDialog.vue';
 
 /** Collection-level actions shared by the collections list and a collection's header. */
 export function useCollectionActions() {
@@ -64,5 +65,20 @@ export function useCollectionActions() {
     });
   }
 
-  return { exportCollection, deleteCollection, copySchema };
+  /** Deletes documents matching a filter (`mode: 'filter'`) or all of them (`'all'`). */
+  function deleteDocuments(collectionName: string, mode: 'filter' | 'all') {
+    $q.dialog({
+      component: DeleteDocumentsDialog,
+      componentProps: { collectionName, mode },
+    }).onOk((deleted: number) => {
+      $q.notify({
+        type: 'positive',
+        position: 'top',
+        timeout: 2000,
+        message: `Deleted ${deleted.toLocaleString()} document${deleted === 1 ? '' : 's'} from ${collectionName}`,
+      });
+    });
+  }
+
+  return { exportCollection, deleteCollection, copySchema, deleteDocuments };
 }

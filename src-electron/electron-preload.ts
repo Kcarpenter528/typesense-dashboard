@@ -86,6 +86,17 @@ const apiMethods = [
   'post',
   'delete',
   'createSnapshot',
+  'deleteDocumentsByFilter',
+  'truncateCollection',
+  'getNlSearchModels',
+  'createNlSearchModel',
+  'updateNlSearchModel',
+  'deleteNlSearchModel',
+  'getConversationModels',
+  'createConversationModel',
+  'updateConversationModel',
+  'deleteConversationModel',
+  'multiSearch',
 ];
 
 const api = {

@@ -109,6 +109,25 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: 'AI search',
+    items: [
+      {
+        label: 'Natural language',
+        to: '/nl-models',
+        icon: 'sym_s_translate',
+        keywords: 'nl search models llm openai gemini vllm',
+        available: (s) => s.data.features.nlSearchModels,
+      },
+      {
+        label: 'Conversations',
+        to: '/conversation-models',
+        icon: 'sym_s_forum',
+        keywords: 'rag chat conversational search models llm answers',
+        available: (s) => s.data.features.conversationModels,
+      },
+    ],
+  },
+  {
     label: 'Access',
     items: [
       {

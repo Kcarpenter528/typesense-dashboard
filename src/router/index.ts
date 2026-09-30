@@ -46,8 +46,7 @@ export default defineRouter(function ({ store }) {
         !collectionsStore.currentCollection ||
         collectionsStore.currentCollection.name !== to.params.name
       ) {
-        // TODO check await needed?
-        void collectionsStore.loadCurrentCollectionByName(to.params.name as string);
+        collectionsStore.loadCurrentCollectionByName(to.params.name as string);
       }
       next();
     } else next();

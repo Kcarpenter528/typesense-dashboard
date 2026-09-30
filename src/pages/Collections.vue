@@ -110,6 +110,27 @@
                 <q-item
                   v-close-popup
                   clickable
+                  @click="actions.deleteDocuments(props.row.name, 'filter')"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="sym_s_filter_alt_off" size="18px" />
+                  </q-item-section>
+                  <q-item-section>Delete documents by filter…</q-item-section>
+                </q-item>
+                <q-item
+                  v-close-popup
+                  clickable
+                  :disable="!props.row.num_documents"
+                  @click="actions.deleteDocuments(props.row.name, 'all')"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="sym_s_delete_sweep" size="18px" />
+                  </q-item-section>
+                  <q-item-section>Delete all documents…</q-item-section>
+                </q-item>
+                <q-item
+                  v-close-popup
+                  clickable
                   class="text-negative"
                   @click="actions.deleteCollection(props.row.name)"
                 >

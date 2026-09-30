@@ -15,6 +15,7 @@ import { useStopwordsStore } from './stopwords';
 import { useStemmingStore } from './stemming';
 import { useSynonymsStore } from './synonyms';
 import { useCurationsStore } from './curations';
+import { useAiModelsStore } from './aiModels';
 
 /*
  * The connection to a Typesense node: login, server history, what the server reports
@@ -49,6 +50,8 @@ export interface NodeDataInterface {
     health: boolean;
     synonymSets: boolean;
     curationSets: boolean;
+    nlSearchModels: boolean;
+    conversationModels: boolean;
   };
 }
 
@@ -138,6 +141,8 @@ function state(): NodeStateInterface {
         health: false,
         synonymSets: false,
         curationSets: false,
+        nlSearchModels: false,
+        conversationModels: false,
       },
     },
   };
@@ -254,6 +259,8 @@ export const useNodeStore = defineStore('node', {
           ['debug', () => this.getDebug()],
           ['synonymSets', () => useSynonymsStore().fetchSets()],
           ['curationSets', () => useCurationsStore().fetchSets()],
+          ['nlSearchModels', () => useAiModelsStore().loadNl()],
+          ['conversationModels', () => useAiModelsStore().loadConversation()],
         ];
         for (const [key, probe] of probes) {
           probe().then(
