@@ -72,15 +72,15 @@ docker build --build-arg=PUBLIC_PATH=/example -t typesense-dashboard .
 The `Build and Deploy Docker Image` workflow publishes the image on every push to `main` and on version tags, to GitHub Container Registry and Docker Hub:
 
 - `ghcr.io/kcarpenter528/typesense-dashboard`
-- `<DOCKERHUB_USERNAME>/typesense-dashboard` on Docker Hub
+- `kcarpenter528/typesense-dashboard` on [Docker Hub](https://hub.docker.com/r/kcarpenter528/typesense-dashboard)
 
 `main` follows the main branch. A version tag such as `v2.5.0` publishes `2.5.0`, `2.5` and `latest`.
 
 ```bash
-docker run -d -p 80:80 ghcr.io/kcarpenter528/typesense-dashboard:main
+docker run -d -p 80:80 kcarpenter528/typesense-dashboard:main
 ```
 
-To publish (from this repository or your own fork), add these under **Settings › Secrets and variables › Actions**:
+To publish from your own fork, add these under **Settings › Secrets and variables › Actions**:
 
 - variable `DOCKERHUB_USERNAME`: the Docker Hub account to publish to
 - secret `DOCKERHUB_TOKEN`: a Docker Hub access token with read and write access
