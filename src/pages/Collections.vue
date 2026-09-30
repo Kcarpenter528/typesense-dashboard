@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="collections"
       title="Collections"
       description="A collection holds documents that share a schema. Open one to search it, change its fields or add documents."
     >

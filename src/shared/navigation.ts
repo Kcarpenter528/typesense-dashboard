@@ -1,4 +1,5 @@
 import type { useNodeStore } from '@/stores/node';
+import type { PageHelpKey } from './help';
 
 type Store = ReturnType<typeof useNodeStore>;
 
@@ -6,6 +7,8 @@ export interface NavItem {
   label: string;
   to: string;
   icon: string;
+  /** The page's help topic, listed on the Help page. */
+  help?: PageHelpKey;
   /** Extra words the jump palette matches on. */
   keywords?: string;
   /** Hidden when this returns false (feature not supported or not permitted by the key). */
@@ -28,18 +31,21 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: 'Status',
         to: '/',
+        help: 'status',
         icon: 'sym_s_monitor_heart',
         keywords: 'health metrics cpu memory',
       },
       {
         label: 'Settings',
         to: '/settings',
+        help: 'settings',
         icon: 'sym_s_tune',
         keywords: 'cors config cache snapshot compact operations docker',
       },
       {
         label: 'Cluster',
         to: '/clusters',
+        help: 'clusters',
         icon: 'sym_s_hub',
         keywords: 'nodes leader follower',
         available: (s) => !!s.currentClusterTag,
@@ -52,12 +58,14 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: 'Collections',
         to: '/collections',
+        help: 'collections',
         icon: 'sym_s_folder_data',
         keywords: 'schema index',
       },
       {
         label: 'Aliases',
         to: '/aliases',
+        help: 'aliases',
         icon: 'sym_s_alt_route',
         available: (s) => s.data.features.aliases,
       },
@@ -69,6 +77,7 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: 'Synonyms',
         to: '/synonyms',
+        help: 'synonyms',
         icon: 'sym_s_join',
         keywords: 'synonym sets',
         available: (s) => s.data.features.synonymSets,
@@ -76,6 +85,7 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: 'Curations',
         to: '/curations',
+        help: 'curations',
         icon: 'sym_s_push_pin',
         keywords: 'overrides pin hide curation sets',
         available: (s) => s.data.features.curationSets,
@@ -83,18 +93,21 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: 'Search presets',
         to: '/searchpresets',
+        help: 'presets',
         icon: 'sym_s_bookmark',
         available: (s) => s.data.features.searchPresets,
       },
       {
         label: 'Stopwords',
         to: '/stopwords',
+        help: 'stopwords',
         icon: 'sym_s_format_strikethrough',
         available: (s) => s.data.features.stopwords,
       },
       {
         label: 'Stemming',
         to: '/stemming',
+        help: 'stemming',
         icon: 'sym_s_spellcheck',
         keywords: 'dictionaries',
         available: (s) => s.data.features.stemmingDictionaries,
@@ -102,6 +115,7 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: 'Analytics rules',
         to: '/analyticsrules',
+        help: 'analytics',
         icon: 'sym_s_insights',
         keywords: 'popular queries no hits counters',
         available: (s) => s.data.features.analyticsRules,
@@ -114,6 +128,7 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: 'Natural language',
         to: '/nl-models',
+        help: 'nlModels',
         icon: 'sym_s_translate',
         keywords: 'nl search models llm openai gemini vllm',
         available: (s) => s.data.features.nlSearchModels,
@@ -121,6 +136,7 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: 'Conversations',
         to: '/conversation-models',
+        help: 'conversationModels',
         icon: 'sym_s_forum',
         keywords: 'rag chat conversational search models llm answers',
         available: (s) => s.data.features.conversationModels,
@@ -133,9 +149,21 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         label: 'API keys',
         to: '/apikeys',
+        help: 'apiKeys',
         icon: 'sym_s_key',
         keywords: 'keys permissions scoped',
         available: (s) => s.data.features.apiKeys,
+      },
+    ],
+  },
+  {
+    label: 'Help',
+    items: [
+      {
+        label: 'Help & docs',
+        to: '/help',
+        icon: 'sym_s_help',
+        keywords: 'documentation guide faq getting started how to',
       },
     ],
   },

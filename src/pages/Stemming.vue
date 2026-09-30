@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="stemming"
       title="Stemming"
       description="A stemming dictionary maps words to their root, such as people → person, so a search for one finds the other. Attach it to a field with stem_dictionary in the schema."
     >

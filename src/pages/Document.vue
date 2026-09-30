@@ -43,7 +43,10 @@
 
       <aside class="side">
         <div class="ts-sheet side-card">
-          <div class="ts-eyebrow q-mb-sm">When a document's id already exists</div>
+          <div class="ts-eyebrow q-mb-sm row items-center no-wrap">
+            When a document's id already exists
+            <help-tip topic="documents.action" class="q-ml-xs" />
+          </div>
           <div class="modes">
             <label
               v-for="mode in MODES"
@@ -112,6 +115,7 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useNodeStore } from '@/stores/node';

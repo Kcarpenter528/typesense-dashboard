@@ -1,6 +1,6 @@
 <template>
   <q-page class="ts-page">
-    <page-header title="Server status">
+    <page-header help="status" title="Server status">
       <template #description>
         <span class="health" :class="healthClass">
           <span class="health__dot" aria-hidden="true" />

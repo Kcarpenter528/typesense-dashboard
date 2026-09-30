@@ -28,6 +28,7 @@
             <div class="text-body2 text-weight-medium">
               {{ setting.label }}
               <code class="text-caption text-grey-7 q-ml-xs">{{ setting.key }}</code>
+              <help-tip :topic="serverFlagTopic(setting, true)" />
             </div>
             <div class="text-caption text-grey-8">{{ setting.description }}</div>
             <div class="text-caption text-grey-7">
@@ -88,6 +89,8 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
+import { serverFlagTopic } from '@/shared/help';
 import { computed, reactive } from 'vue';
 import { useQuasar } from 'quasar';
 import { useOperationsStore } from '@/stores/operations';

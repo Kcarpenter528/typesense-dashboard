@@ -1,6 +1,10 @@
 <template>
   <q-page class="ts-page">
-    <page-header :title="copy.title" :description="copy.description">
+    <page-header
+      :title="copy.title"
+      :description="copy.description"
+      :help="kind === 'nl' ? 'nlModels' : 'conversationModels'"
+    >
       <q-btn
         unelevated
         no-caps
@@ -106,7 +110,9 @@
           map-options
           label="Provider"
           :options="providers.map((p) => ({ label: p.label, value: p.prefix }))"
-        />
+        >
+          <template #append><help-tip topic="ai.provider" /></template>
+        </q-select>
         <q-input
           v-model="modelSuffix"
           outlined
@@ -189,7 +195,9 @@
               :options="collectionNames"
               input-class="text-mono"
               @input-value="(v: string) => (editor.form.history_collection = v)"
-            />
+            >
+              <template v-if="field.help" #append><help-tip :topic="field.help" /></template>
+            </q-select>
             <div v-if="historyStatus" class="history-status row items-start no-wrap q-mt-sm">
               <q-icon
                 :name="historyStatus.ok ? 'sym_s_check_circle' : 'sym_s_info'"
@@ -221,7 +229,9 @@
             :label="field.label + (field.required ? '' : ' (optional)')"
             :hint="field.hint"
             :placeholder="field.placeholder"
-          />
+          >
+            <template v-if="field.help" #append><help-tip :topic="field.help" /></template>
+          </q-input>
         </template>
 
         <q-banner v-if="editor.errors.length" rounded class="form-errors" role="alert">
@@ -267,6 +277,7 @@ import {
 import type { ModelForm, ModelKind } from '@/shared/aiModels';
 import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
 import PageHeader from '@/components/ui/PageHeader.vue';
+import HelpTip from '@/components/help/HelpTip.vue';
 import SideSheet from '@/components/ui/SideSheet.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 

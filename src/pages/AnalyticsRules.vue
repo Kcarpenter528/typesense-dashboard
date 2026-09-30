@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="analytics"
       title="Analytics rules"
       description="Rules collect what people search for and do, then write the results into a collection you can query, such as popular searches for autocomplete."
     >
@@ -112,7 +113,9 @@
       :title="state.editing ? `Edit rule ${state.rule.name}` : 'New analytics rule'"
       width="min(640px, 100vw)"
     >
-      <div class="ts-eyebrow q-mb-sm">What should this rule collect?</div>
+      <div class="ts-eyebrow q-mb-sm row items-center">
+        What should this rule collect? <help-tip topic="analytics.type" class="q-ml-xs" />
+      </div>
       <div class="types q-mb-lg">
         <button
           v-for="t in RULE_TYPES"
@@ -145,7 +148,11 @@
           :options="eventTypes"
           emit-value
           map-options
-        />
+        >
+          <template #append>
+            <help-tip topic="analytics.events" />
+          </template>
+        </q-select>
         <template v-if="state.rule.type !== 'log'">
           <q-select
             v-model="state.rule.collection"
@@ -155,7 +162,11 @@
             hint="Searches or events on this collection or alias."
             lazy-rules
             :rules="[(val) => !!val || 'Choose a collection']"
-          />
+          >
+            <template #append>
+              <help-tip topic="analytics.source" />
+            </template>
+          </q-select>
           <q-select
             v-model="params.destination_collection"
             outlined
@@ -166,7 +177,11 @@
                 ? 'The collection whose documents get counted.'
                 : 'A collection with a q (string) and count (int32) field.'
             "
-          />
+          >
+            <template #append>
+              <help-tip topic="analytics.destination" />
+            </template>
+          </q-select>
         </template>
         <template v-if="state.rule.type === 'counter'">
           <q-input
@@ -175,7 +190,11 @@
             label="Counter field"
             placeholder="popularity"
             hint="A numeric field in the destination documents to add to."
-          />
+          >
+            <template #append>
+              <help-tip topic="analytics.counter_field" />
+            </template>
+          </q-input>
           <q-input
             v-model.number="params.weight"
             outlined
@@ -195,15 +214,25 @@
             min="1"
             label="Keep the top"
             suffix="queries"
-          />
-          <q-toggle
-            v-model="params.expand_query"
-            label="Store the full query, not just the typed prefix"
-          />
-          <q-toggle
-            v-model="params.capture_search_requests"
-            label="Count every search request automatically"
-          />
+          >
+            <template #append>
+              <help-tip topic="analytics.limit" />
+            </template>
+          </q-input>
+          <div class="row no-wrap items-center">
+            <q-toggle
+              v-model="params.expand_query"
+              label="Store the full query, not just the typed prefix"
+            />
+            <help-tip topic="analytics.expand_query" />
+          </div>
+          <div class="row no-wrap items-center">
+            <q-toggle
+              v-model="params.capture_search_requests"
+              label="Count every search request automatically"
+            />
+            <help-tip topic="analytics.capture_search_requests" />
+          </div>
         </template>
       </q-form>
 
@@ -239,6 +268,7 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import { computed, onMounted, reactive } from 'vue';
 import { useQuasar } from 'quasar';
 import type { QTableProps } from 'quasar';

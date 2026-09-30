@@ -33,11 +33,11 @@
             <server-history :show-logout="true" />
           </q-menu>
         </q-btn>
+        <help-menu class="q-ml-xs" />
         <q-btn
           flat
           round
           dense
-          class="q-ml-xs"
           :icon="$q.dark.isActive ? 'sym_s_light_mode' : 'sym_s_dark_mode'"
           :aria-label="$q.dark.isActive ? 'Use light theme' : 'Use dark theme'"
           @click="$q.dark.toggle()"
@@ -77,6 +77,7 @@ import { Platform } from 'quasar';
 import NavMenu from '@/components/NavMenu.vue';
 import ServerHistory from '@/components/ServerHistory.vue';
 import JumpPalette from '@/components/JumpPalette.vue';
+import HelpMenu from '@/components/help/HelpMenu.vue';
 import { useNodeStore } from '@/stores/node';
 
 const store = useNodeStore();
@@ -217,6 +218,12 @@ kbd {
 .server-chip__host {
   font-size: 0.8rem;
   color: var(--ts-ink);
+  @media (max-width: 599px) {
+    max-width: 88px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .server-chip__version {

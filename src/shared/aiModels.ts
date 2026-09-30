@@ -14,6 +14,8 @@ export interface ModelField {
   required?: boolean;
   hint?: string;
   placeholder?: string;
+  /** A FIELD_HELP topic explaining the setting. */
+  help?: string;
 }
 
 export interface Provider {
@@ -163,6 +165,7 @@ export const COMMON_FIELDS: Record<ModelKind, ModelField[]> = {
       type: 'number',
       required: true,
       hint: 'How much of the collection schema is sent to the model. 16000 suits most models',
+      help: 'nl.max_bytes',
     },
     {
       key: 'temperature',
@@ -175,6 +178,7 @@ export const COMMON_FIELDS: Record<ModelKind, ModelField[]> = {
       label: 'Extra instructions',
       type: 'textarea',
       hint: 'Added to the built-in prompt, e.g. how your field names map to plain words',
+      help: 'nl.system_prompt',
     },
   ],
   conversation: [
@@ -184,6 +188,7 @@ export const COMMON_FIELDS: Record<ModelKind, ModelField[]> = {
       type: 'text',
       required: true,
       hint: 'Where conversations are stored',
+      help: 'conversation.history_collection',
     },
     {
       key: 'system_prompt',
@@ -191,6 +196,7 @@ export const COMMON_FIELDS: Record<ModelKind, ModelField[]> = {
       type: 'textarea',
       required: true,
       placeholder: 'You are an assistant for … Answer only from the documents provided.',
+      help: 'conversation.system_prompt',
     },
     {
       key: 'max_bytes',
@@ -198,12 +204,14 @@ export const COMMON_FIELDS: Record<ModelKind, ModelField[]> = {
       type: 'number',
       required: true,
       hint: 'How much of the search results and history is sent to the model',
+      help: 'conversation.max_bytes',
     },
     {
       key: 'ttl',
       label: 'Keep conversations for (seconds)',
       type: 'number',
       hint: 'Default 86400 (one day)',
+      help: 'conversation.ttl',
     },
   ],
 };

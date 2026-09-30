@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="settings"
       title="Server settings"
       description="Change settings on the running server, run maintenance operations, and generate the startup configuration for settings such as CORS."
     />

@@ -37,7 +37,6 @@ export interface NodeDataInterface {
   stats: any;
 
   health: Health | undefined;
-  defaultDocVersion: string;
   features: {
     stopwords: boolean;
     stemmingDictionaries: boolean;
@@ -128,7 +127,6 @@ function state(): NodeStateInterface {
       metrics: {},
       stats: {},
       health: undefined,
-      defaultDocVersion: '28.0',
       features: {
         stopwords: false,
         stemmingDictionaries: false,

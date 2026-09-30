@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="aliases"
       title="Aliases"
       description="An alias is a second name for a collection. Point your app at the alias, then switch it to a new collection without changing code."
     >

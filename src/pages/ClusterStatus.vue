@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="clusters"
       title="Cluster"
       description="Each node of the cluster this server belongs to. Switch to a node to manage it directly."
     />

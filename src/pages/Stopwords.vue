@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="stopwords"
       title="Stopwords"
       description="Stopwords are common words such as the, a or of that searches can ignore. Use a set with the stopwords search parameter."
     >
@@ -112,7 +113,11 @@
           label="Locale"
           placeholder="en"
           hint="Language code of the words, for correct tokenizing."
-        />
+        >
+          <template #append>
+            <help-tip topic="stopwords.locale" />
+          </template>
+        </q-input>
         <q-select
           v-model="state.set.stopwords"
           outlined
@@ -144,6 +149,7 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import { onMounted, reactive } from 'vue';
 import { useQuasar } from 'quasar';
 import type { QTableProps } from 'quasar';

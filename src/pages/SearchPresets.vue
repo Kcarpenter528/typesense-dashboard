@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="presets"
       title="Search presets"
       description="A preset is a saved set of search parameters. Search with preset=name instead of repeating the same query_by, sort_by and filters in every request."
     >
@@ -110,23 +111,26 @@
           lazy-rules
           :rules="[(val) => !!val || 'Enter a name']"
         />
-        <div class="ts-eyebrow q-mb-xs">Search parameters</div>
+        <div class="ts-eyebrow q-mb-xs row items-center">
+          Search parameters <help-tip topic="preset.value" class="q-ml-xs" />
+        </div>
         <div class="json-editor">
           <monaco-editor v-model="presetJson" />
         </div>
         <div v-if="state.jsonError" class="text-negative text-caption q-mt-xs">
           {{ state.jsonError }}
         </div>
-        <q-btn
-          flat
-          dense
-          no-caps
-          color="primary"
-          icon="sym_s_open_in_new"
-          label="Search parameters in the Typesense docs"
-          class="self-start q-mt-sm"
-          :href="`https://typesense.org/docs/${store.data.debug.version || store.data.defaultDocVersion}/api/search.html#presets`"
-          target="_blank"
+        <help-links
+          class="q-mt-sm"
+          :links="[
+            { kind: 'api', page: 'search', anchor: 'presets', label: 'Presets' },
+            {
+              kind: 'api',
+              page: 'search',
+              anchor: 'search-parameters',
+              label: 'Search parameters',
+            },
+          ]"
         />
       </q-form>
       <template #actions>
@@ -146,6 +150,8 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
+import HelpLinks from '@/components/help/HelpLinks.vue';
 import { computed, onMounted, reactive } from 'vue';
 import { useQuasar } from 'quasar';
 import type { QTableProps } from 'quasar';

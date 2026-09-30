@@ -2,6 +2,7 @@
   <q-page class="ts-page">
     <page-header
       v-if="setsMode"
+      help="synonyms"
       title="Synonyms"
       description="Synonyms let a search for one word find documents that use another. They live in sets; a collection uses the sets you link to it."
     />
@@ -52,7 +53,9 @@
     >
       <q-form id="synonym-form" class="column q-gutter-md" @submit="saveItem">
         <div>
-          <div class="ts-eyebrow q-mb-sm">How should the words match?</div>
+          <div class="ts-eyebrow q-mb-sm row items-center">
+            How should the words match? <help-tip topic="synonym.kind" class="q-ml-xs" />
+          </div>
           <div class="kinds">
             <button
               type="button"
@@ -121,7 +124,11 @@
               label="Locale"
               placeholder="en"
               hint="Leave empty to detect it."
-            />
+            >
+              <template #append>
+                <help-tip topic="synonym.locale" />
+              </template>
+            </q-input>
             <q-select
               v-model="editor.item.symbols_to_index"
               outlined
@@ -133,7 +140,11 @@
               input-debounce="0"
               label="Symbols to keep"
               hint="Characters such as + or # that are part of the words, as in c++."
-            />
+            >
+              <template #append>
+                <help-tip topic="synonym.symbols_to_index" />
+              </template>
+            </q-select>
           </div>
         </q-expansion-item>
       </q-form>
@@ -153,6 +164,7 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';

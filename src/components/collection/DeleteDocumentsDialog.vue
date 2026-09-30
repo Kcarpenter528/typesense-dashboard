@@ -2,9 +2,16 @@
   <q-dialog ref="dialogRef" @hide="onDialogHide">
     <q-card class="delete-docs">
       <q-card-section>
-        <h2 class="ts-section-title">
-          {{ mode === 'filter' ? 'Delete matching documents' : `Empty ${collectionName}` }}
-        </h2>
+        <div class="row items-center no-wrap">
+          <h2 class="ts-section-title">
+            {{ mode === 'filter' ? 'Delete matching documents' : `Empty ${collectionName}` }}
+          </h2>
+          <help-tip
+            :topic="mode === 'filter' ? 'documents.filter_by' : 'documents.truncate'"
+            size="sm"
+            class="q-ml-xs"
+          />
+        </div>
         <p class="delete-docs__lead">
           <template v-if="mode === 'filter'">
             Permanently deletes every document in <code>{{ collectionName }}</code> that matches a
@@ -31,7 +38,8 @@
             :error="!!countError"
             :error-message="countError"
             @keydown.enter.prevent="confirm"
-          />
+          >
+          </q-input>
           <div class="delete-docs__examples row items-center">
             <span class="ts-faint">Examples:</span>
             <q-chip
@@ -83,6 +91,7 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import { computed, ref, watch } from 'vue';
 import { useDialogPluginComponent } from 'quasar';
 import { useCollectionsStore } from '@/stores/collections';

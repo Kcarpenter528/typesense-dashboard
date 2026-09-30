@@ -1,18 +1,21 @@
 <template>
   <div class="ask">
     <div class="ask__controls ts-sheet">
-      <q-btn-toggle
-        v-model="mode"
-        no-caps
-        unelevated
-        dense
-        toggle-color="primary"
-        class="mode-toggle"
-        :options="[
-          { label: 'Find with filters', value: 'nl', icon: 'sym_s_translate' },
-          { label: 'Get an answer', value: 'chat', icon: 'sym_s_forum' },
-        ]"
-      />
+      <div class="row items-center no-wrap">
+        <q-btn-toggle
+          v-model="mode"
+          no-caps
+          unelevated
+          dense
+          toggle-color="primary"
+          class="mode-toggle"
+          :options="[
+            { label: 'Find with filters', value: 'nl', icon: 'sym_s_translate' },
+            { label: 'Get an answer', value: 'chat', icon: 'sym_s_forum' },
+          ]"
+        />
+        <help-tip topic="search.ask" size="sm" class="q-ml-xs" />
+      </div>
       <p class="ask__explainer">
         <template v-if="mode === 'nl'">
           A natural-language model turns your question into a search: keywords, filters and sorting.
@@ -189,6 +192,7 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useCollectionsStore } from '@/stores/collections';

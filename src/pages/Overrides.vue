@@ -2,6 +2,7 @@
   <q-page class="ts-page">
     <page-header
       v-if="setsMode"
+      help="curations"
       title="Curations"
       description="Curations change the results for specific searches: pin documents to fixed positions, hide others, or apply filters and sorting. They live in sets that collections opt into."
     />
@@ -61,7 +62,11 @@
               outlined
               label="Search is"
               placeholder="urgent"
-            />
+            >
+              <template #append>
+                <help-tip topic="curation.rule" />
+              </template>
+            </q-input>
             <q-select
               v-model="rule.match"
               class="col-12 col-sm-4"
@@ -82,7 +87,11 @@
             label="Or the search's filter matches"
             placeholder="category:shoes"
             hint="Optional. Use a query, a filter, or both."
-          />
+          >
+            <template #append>
+              <help-tip topic="curation.rule" />
+            </template>
+          </q-input>
           <q-select
             v-if="store.supportsCurationRuleTags"
             v-model="rule.tags"
@@ -96,7 +105,11 @@
             input-debounce="0"
             label="Or the search sends one of these tags"
             hint="Sent with the curation_tags search parameter."
-          />
+          >
+            <template #append>
+              <help-tip topic="curation.tags" />
+            </template>
+          </q-select>
           <div v-if="editor.whenError" class="text-negative text-caption q-mt-xs">
             {{ editor.whenError }}
           </div>
@@ -104,7 +117,9 @@
 
         <section>
           <div class="row items-center justify-between">
-            <div class="section-title">Pin documents</div>
+            <div class="section-title row items-center">
+              Pin documents <help-tip topic="curation.pin" class="q-ml-xs" />
+            </div>
             <q-btn flat dense no-caps size="sm" icon="sym_s_add" label="Add pin" @click="addPin" />
           </div>
           <div v-if="!editor.item.includes?.length" class="ts-faint text-caption">
@@ -156,7 +171,11 @@
             input-debounce="0"
             label="Document IDs"
             hint="Type an ID and press Enter."
-          />
+          >
+            <template #append>
+              <help-tip topic="curation.hide" />
+            </template>
+          </q-select>
         </section>
 
         <q-expansion-item
@@ -171,14 +190,26 @@
               outlined
               label="Apply filter"
               placeholder="in_stock:true"
-            />
+            >
+              <template #append>
+                <help-tip topic="curation.filter_by" />
+              </template>
+            </q-input>
             <q-input
               v-model="editor.item.sort_by"
               outlined
               label="Sort results by"
               placeholder="price:asc"
-            />
-            <q-input v-model="editor.item.replace_query" outlined label="Replace the search with" />
+            >
+              <template #append>
+                <help-tip topic="curation.sort_by" />
+              </template>
+            </q-input>
+            <q-input v-model="editor.item.replace_query" outlined label="Replace the search with">
+              <template #append>
+                <help-tip topic="curation.replace_query" />
+              </template>
+            </q-input>
             <div class="row q-col-gutter-sm">
               <q-input
                 v-model="activeFrom"
@@ -188,7 +219,11 @@
                 stack-label
                 clearable
                 label="Active from"
-              />
+              >
+                <template #append>
+                  <help-tip topic="curation.effective" />
+                </template>
+              </q-input>
               <q-input
                 v-model="activeTo"
                 class="col-6"
@@ -199,20 +234,29 @@
                 label="Active until"
               />
             </div>
-            <q-toggle
-              :model-value="editor.item.remove_matched_tokens !== false"
-              label="Remove the matched words from the search"
-              @update:model-value="editor.item.remove_matched_tokens = $event"
-            />
-            <q-toggle
-              v-model="editor.item.filter_curated_hits"
-              label="Apply search filters to pinned documents too"
-            />
-            <q-toggle
-              :model-value="editor.item.stop_processing !== false"
-              label="Stop at this curation when it matches"
-              @update:model-value="editor.item.stop_processing = $event"
-            />
+            <div class="row no-wrap items-center">
+              <q-toggle
+                :model-value="editor.item.remove_matched_tokens !== false"
+                label="Remove the matched words from the search"
+                @update:model-value="editor.item.remove_matched_tokens = $event"
+              />
+              <help-tip topic="curation.remove_matched_tokens" />
+            </div>
+            <div class="row no-wrap items-center">
+              <q-toggle
+                v-model="editor.item.filter_curated_hits"
+                label="Apply search filters to pinned documents too"
+              />
+              <help-tip topic="curation.filter_curated_hits" />
+            </div>
+            <div class="row no-wrap items-center">
+              <q-toggle
+                :model-value="editor.item.stop_processing !== false"
+                label="Stop at this curation when it matches"
+                @update:model-value="editor.item.stop_processing = $event"
+              />
+              <help-tip topic="curation.stop_processing" />
+            </div>
             <q-input
               v-model="editor.item.id"
               outlined
@@ -249,6 +293,7 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
