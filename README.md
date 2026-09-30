@@ -67,7 +67,27 @@ To serve from a subfolder such as `/example` (it must start with `/`), set the `
 docker build --build-arg=PUBLIC_PATH=/example -t typesense-dashboard .
 ```
 
-The pre-built image `ghcr.io/bfritscher/typesense-dashboard:latest` is the **original** project. This fork doesn't publish an image yet.
+#### Pre-built images
+
+The `Build and Deploy Docker Image` workflow publishes the image on every push to `main` and on version tags, to GitHub Container Registry and Docker Hub:
+
+- `ghcr.io/kcarpenter528/typesense-dashboard`
+- `<DOCKERHUB_USERNAME>/typesense-dashboard` on Docker Hub
+
+`main` follows the main branch. A version tag such as `v2.5.0` publishes `2.5.0`, `2.5` and `latest`.
+
+```bash
+docker run -d -p 80:80 ghcr.io/kcarpenter528/typesense-dashboard:main
+```
+
+To publish (from this repository or your own fork), add these under **Settings › Secrets and variables › Actions**:
+
+- variable `DOCKERHUB_USERNAME`: the Docker Hub account to publish to
+- secret `DOCKERHUB_TOKEN`: a Docker Hub access token with read and write access
+
+GitHub makes a new container package private. To let anyone pull it, change its visibility under the package's settings on GitHub.
+
+`ghcr.io/bfritscher/typesense-dashboard` is the **original** project's image and doesn't include the changes in this fork.
 
 #### Development proxy (`/api`)
 
@@ -282,7 +302,7 @@ Dark mode:
 - **Recreating a collection** (to change a setting only accepted at creation) copies every document twice: into a temporary collection and back. The collection is missing or incomplete while it's being refilled, and large collections take time and memory.
 - **AI search** was tested against a local OpenAI-compatible stand-in model, not a real provider. Conversational answers arrive in one piece; streaming (`conversation_stream`) isn't supported.
 - **Servers before v30:** per-collection synonyms and curations are still supported, but haven't been tested against a real pre-v30 server since the redesign.
-- **The hosted version, Docker image and desktop downloads** linked above are the original project's, not this fork's. In `.github/workflows`, the Docker workflow still publishes to the original project's image names with its Docker Hub account, and the GitHub Pages and release workflows haven't been set up or run for this fork.
+- **The hosted version and desktop downloads** linked above are the original project's, not this fork's. The GitHub Pages and release workflows in `.github/workflows` haven't been set up or run for this fork.
 - The API key you log in with is saved in the browser's local storage (and in the recent servers list), so only use the dashboard on machines you trust.
 
 # Development
