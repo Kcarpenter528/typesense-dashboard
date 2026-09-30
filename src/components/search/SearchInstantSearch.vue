@@ -4,86 +4,110 @@
     :search-client="searchClient"
     :index-name="currentCollection.name"
     :middlewares="middlewares"
+    class="search"
   >
     <ais-configure :hits-per-page.camel="12" />
     <ais-search-box v-slot="{ currentRefinement, refine }">
       <debounced-search-box :model-value="currentRefinement" @refine="refine" />
     </ais-search-box>
-    <ais-stats></ais-stats>
-    <ais-current-refinements />
+    <div class="search__meta row items-center justify-between q-mt-sm">
+      <ais-stats v-slot="{ nbHits, processingTimeMS }">
+        <span class="ts-muted">
+          <strong>{{ nbHits.toLocaleString() }}</strong> results · {{ processingTimeMS }} ms
+        </span>
+      </ais-stats>
+      <ais-current-refinements />
+    </div>
 
-    <div class="row q-mt-md">
-      <div class="col-3 q-pr-sm">
-        <ais-hits-per-page
-          :items="[
-            { label: '12 hits per page', value: 12, default: true },
-            { label: '48 hits per page', value: 48 },
-            { label: '100 hits per page', value: 100 },
-            { label: '250 hits per page', value: 250 },
-          ]"
-        />
-        <q-btn flat @click="exportPage()">export current page</q-btn>
+    <div class="search__layout">
+      <aside class="search__filters">
+        <div class="ts-sheet filters-card">
+          <div class="ts-eyebrow q-mb-xs">Sort</div>
+          <ais-sort-by :items="sortBy" />
+          <div class="ts-eyebrow q-mt-md q-mb-xs">Results per page</div>
+          <ais-hits-per-page
+            :items="[
+              { label: '12', value: 12, default: true },
+              { label: '48', value: 48 },
+              { label: '100', value: 100 },
+              { label: '250', value: 250 },
+            ]"
+          />
+          <q-btn
+            flat
+            dense
+            no-caps
+            size="sm"
+            icon="sym_s_download"
+            label="Export this page as JSON"
+            class="q-mt-sm"
+            @click="exportPage()"
+          />
+        </div>
 
-        <div class="text-subtitle2 q-pt-md">Sort By</div>
-        <ais-sort-by :items="sortBy" />
+        <div
+          v-for="name in [...facetStringFields, ...facetBooleanFields]"
+          :key="name"
+          class="ts-sheet filters-card"
+        >
+          <div class="facet-title text-mono">{{ name }}</div>
+          <ais-refinement-list
+            :searchable="facetStringFields.includes(name)"
+            :attribute="name"
+            :searchable-placeholder="`Find a ${name}`"
+          />
+        </div>
 
-        <div class="text-subtitle2 q-pt-md">Stopwords</div>
-        <q-select
-          v-model="currentStopwordsSet"
-          :disable="!store.data.features.stopwords"
-          outlined
-          clearable
+        <div v-for="name in facetNumberFields" :key="name" class="ts-sheet filters-card">
+          <div class="facet-title text-mono">{{ name }}</div>
+          <ais-range-input :attribute="name" />
+        </div>
+
+        <q-expansion-item
           dense
-          options-dense
-          :options="stopwords"
-          @update:model-value="updateTypesenseAdapterConfiguration()"
-        ></q-select>
+          switch-toggle-side
+          class="ts-sheet filters-card"
+          header-class="q-px-none ts-muted"
+          label="Tuning"
+        >
+          <div class="ts-eyebrow q-mt-sm q-mb-xs">Stopwords</div>
+          <q-select
+            v-model="currentStopwordsSet"
+            :disable="!store.data.features.stopwords"
+            outlined
+            clearable
+            dense
+            options-dense
+            placeholder="None"
+            :options="stopwords"
+            @update:model-value="updateTypesenseAdapterConfiguration()"
+          />
+          <div class="ts-eyebrow q-mt-md q-mb-xs">Max candidates</div>
+          <q-input
+            v-model.number="maxCandidates"
+            type="number"
+            outlined
+            dense
+            :min="0"
+            :max="10000"
+            hint="Similar words considered for prefix and typo matches."
+            @update:model-value="updateTypesenseAdapterConfiguration()"
+          />
+        </q-expansion-item>
+      </aside>
 
-        <div class="text-subtitle2 q-pt-md">Max Candidates</div>
-        <q-input
-          v-model.number="maxCandidates"
-          type="number"
-          outlined
-          dense
-          :min="0"
-          :max="10000"
-          hint="Number of similar words for prefix and typo searching"
-          @update:model-value="updateTypesenseAdapterConfiguration()"
-        ></q-input>
-
-        <div v-for="name in facetNumberFields" :key="name" class="q-mb-sm">
-          <div class="text-subtitle2 q-pt-md">{{ name }}</div>
-          <ais-range-input :searchable="true" :attribute="name" />
-        </div>
-
-        <div v-for="name in facetStringFields" :key="name" class="q-mb-sm">
-          <div class="text-subtitle2 q-pt-md">{{ name }}</div>
-          <ais-refinement-list class="q-mb-sm" :searchable="true" :attribute="name" />
-        </div>
-
-        <div v-for="name in facetBooleanFields" :key="name" class="q-mb-sm">
-          <div class="text-subtitle2 q-pt-md">{{ name }}</div>
-          <ais-refinement-list class="q-mb-sm" :attribute="name" />
-        </div>
-      </div>
-      <div class="col-9">
-        <ais-pagination class="q-mb-md" />
+      <section class="search__results">
         <ais-hits>
           <template v-if="currentCollection" #item="{ item }">
-            <search-result-item
-              :item="item"
-              @deleted="instantSearchInstance.refresh()"
-            ></search-result-item>
+            <search-result-item :item="item" @deleted="instantSearchInstance.refresh()" />
           </template>
         </ais-hits>
-        <ais-pagination class="q-my-md" />
-      </div>
+        <ais-pagination class="q-my-lg" />
+      </section>
     </div>
   </ais-instant-search>
-  <div v-else-if="searchClientError">
-    <q-banner inline-actions class="text-white bg-red">
-      {{ searchClientError }}
-    </q-banner>
+  <div v-else-if="searchClientError" class="error-card">
+    {{ searchClientError }}
   </div>
 </template>
 
@@ -151,7 +175,12 @@ const sortBy = computed((): { value: string; label: string }[] => {
   if (!currentCollection.value || !currentCollection.value.fields) return [];
   const sortBy = [{ value: currentCollection.value.name, label: 'Default' }];
   currentCollection.value.fields
-    .filter((f) => ['int32', 'float'].includes(f.type) || (f.type === 'string' && f.sort))
+    .filter(
+      (f) =>
+        !f.name.includes('*') &&
+        ((['int32', 'int64', 'float', 'bool'].includes(f.type) && f.sort !== false) ||
+          (f.type === 'string' && f.sort)),
+    )
     .forEach((f) => {
       if (!currentCollection.value) return;
       sortBy.push({
@@ -233,26 +262,46 @@ watch(
 );
 </script>
 
-<style>
-.body--dark .ais-SearchBox-input,
-.body--dark .ais-MenuSelect-select,
-.body--dark .ais-NumericSelector-select,
-.body--dark .ais-HitsPerPage-select,
-.body--dark .ais-ResultsPerPage-select,
-.body--dark .ais-SortBy-select {
-  background-color: rgba(255, 255, 255, 0.07);
-  color: #fff;
+<style lang="scss" scoped>
+.search__layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 16px;
+  align-items: start;
+  @media (max-width: 1023px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
-.body--dark .ais-InstantSearch option {
-  background-color: #1f2937;
-  color: #fff;
+.search__filters {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
 }
 
-.ais-InfiniteHits-item,
-.ais-InfiniteResults-item,
-.ais-Hits-item,
-.ais-Results-item {
-  box-shadow: none;
+.filters-card {
+  padding: 12px 14px;
+}
+
+.facet-title {
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.search__meta {
+  min-height: 28px;
+  font-size: 0.85rem;
+  strong {
+    color: var(--ts-ink);
+  }
+}
+
+.error-card {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--ts-danger-soft);
+  border: 1px solid rgba(200, 50, 75, 0.3);
 }
 </style>

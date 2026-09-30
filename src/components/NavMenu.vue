@@ -1,268 +1,133 @@
 <template>
-  <div class="column fit no-wrap">
-    <q-list class="col overflow-auto">
-      <q-item v-ripple clickable to="/" exact>
-        <q-item-section avatar>
-          <q-icon name="sym_s_dns" />
-        </q-item-section>
-
-        <q-item-section> Server Status </q-item-section>
-      </q-item>
-
-      <q-item v-ripple clickable to="/settings" exact>
-        <q-item-section avatar>
-          <q-icon name="sym_s_settings" />
-        </q-item-section>
-
-        <q-item-section> Server Settings </q-item-section>
-      </q-item>
-
-      <q-item v-if="!!store.currentClusterTag" v-ripple clickable :to="{ name: 'Clusters' }">
-        <q-item-section avatar>
-          <q-icon name="sym_s_view_column" />
-        </q-item-section>
-
-        <q-item-section> Cluster Status </q-item-section>
-      </q-item>
-
-      <q-item v-ripple clickable to="/collections" exact>
-        <q-item-section avatar>
-          <q-icon name="sym_s_grid_view" />
-        </q-item-section>
-
-        <q-item-section>
-          <q-item-label>Collections</q-item-label>
-        </q-item-section>
-      </q-item>
-
-      <q-item v-ripple clickable to="/aliases" exact :disable="!store.data.features.aliases">
-        <q-item-section avatar>
-          <q-icon name="sym_s_call_split" />
-        </q-item-section>
-
-        <q-item-section> Aliases </q-item-section>
-      </q-item>
-
-      <q-item v-ripple clickable to="/apikeys" exact :disable="!store.data.features.apiKeys">
-        <q-item-section avatar>
-          <q-icon name="sym_s_key" />
-        </q-item-section>
-
-        <q-item-section> API Keys </q-item-section>
-      </q-item>
-
-      <q-item
-        v-ripple
-        clickable
-        to="/analyticsrules"
-        exact
-        :disable="!store.data.features.analyticsRules"
-      >
-        <q-item-section avatar>
-          <q-icon name="sym_s_query_stats" />
-        </q-item-section>
-
-        <q-item-section> Analytics Rules </q-item-section>
-      </q-item>
-
-      <q-item
-        v-ripple
-        clickable
-        to="/searchpresets"
-        exact
-        :disable="!store.data.features.searchPresets"
-      >
-        <q-item-section avatar>
-          <q-icon name="sym_s_manage_search" />
-        </q-item-section>
-
-        <q-item-section> Search Presets </q-item-section>
-      </q-item>
-
-      <q-item v-if="store.data.features.synonymSets" v-ripple clickable to="/synonyms" exact>
-        <q-item-section avatar>
-          <q-icon name="sym_s_dataset_linked" />
-        </q-item-section>
-
-        <q-item-section> Synonyms </q-item-section>
-      </q-item>
-
-      <q-item v-if="store.data.features.curationSets" v-ripple clickable to="/curations" exact>
-        <q-item-section avatar>
-          <q-icon name="sym_s_low_priority" />
-        </q-item-section>
-
-        <q-item-section> Curations </q-item-section>
-      </q-item>
-
-      <q-item v-ripple clickable to="/stopwords" exact :disable="!store.data.features.stopwords">
-        <q-item-section avatar>
-          <q-icon name="sym_s_playlist_remove" />
-        </q-item-section>
-
-        <q-item-section> Stopwords </q-item-section>
-      </q-item>
-
-      <q-item
-        v-ripple
-        clickable
-        to="/stemming"
-        exact
-        :disable="!store.data.features.stemmingDictionaries"
-      >
-        <q-item-section avatar>
-          <q-icon name="sym_s_spellcheck" />
-        </q-item-section>
-
-        <q-item-section> Stemming </q-item-section>
-      </q-item>
-
-      <q-separator spaced />
-
-      <q-item>
-        <q-item-section>
-          <q-select
-            v-model="currentCollection"
-            borderless
-            :options="filteredCollections"
-            use-input
-            fill-input
-            hide-selected
-            input-debounce="0"
-            label="Collection"
-            option-label="name"
-            color="white"
-            label-color="white"
-            dark
-            @filter="collectionFilterFn"
-          />
-        </q-item-section>
-      </q-item>
-
-      <q-item
-        v-ripple
-        clickable
-        :to="`/collection/${currentCollection?.name}/search`"
-        exact
-        :disable="!currentCollection"
-      >
-        <q-item-section avatar>
-          <q-icon name="sym_s_search" />
-        </q-item-section>
-
-        <q-item-section> Search </q-item-section>
-      </q-item>
-
-      <q-item
-        v-if="!store.data.features.synonymSets"
-        v-ripple
-        clickable
-        :to="`/collection/${currentCollection?.name}/synonyms`"
-        exact
-        :disable="!currentCollection"
-      >
-        <q-item-section avatar>
-          <q-icon name="sym_s_dataset_linked" />
-        </q-item-section>
-
-        <q-item-section> Synonyms </q-item-section>
-      </q-item>
-
-      <q-item
-        v-if="!store.data.features.curationSets"
-        v-ripple
-        clickable
-        :to="`/collection/${currentCollection?.name}/curations`"
-        exact
-        :disable="!currentCollection"
-      >
-        <q-item-section avatar>
-          <q-icon name="sym_s_low_priority" />
-        </q-item-section>
-
-        <q-item-section> Curations </q-item-section>
-      </q-item>
-
-      <q-item
-        v-ripple
-        clickable
-        :to="`/collection/${currentCollection?.name}/schema`"
-        exact
-        :disable="!currentCollection"
-      >
-        <q-item-section avatar>
-          <q-icon name="sym_s_data_object" />
-        </q-item-section>
-
-        <q-item-section> Schema </q-item-section>
-      </q-item>
-
-      <q-item
-        v-ripple
-        clickable
-        :to="`/collection/${currentCollection?.name}/document`"
-        exact
-        :disable="!currentCollection"
-      >
-        <q-item-section avatar>
-          <q-icon name="sym_s_library_add" />
-        </q-item-section>
-
-        <q-item-section> Add Document </q-item-section>
-      </q-item>
-    </q-list>
+  <nav class="nav column no-wrap fit" aria-label="Main">
+    <div class="col scroll">
+      <section v-for="section in sections" :key="section.label" class="nav__section">
+        <div class="nav__heading">{{ section.label }}</div>
+        <router-link
+          v-for="item in section.items"
+          :key="item.to"
+          v-slot="{ href, navigate, isExactActive }"
+          :to="item.to"
+          custom
+        >
+          <a
+            :href="href"
+            class="nav__item"
+            :class="{ 'is-active': isExactActive || isCollectionArea(item, isExactActive) }"
+            :aria-current="isExactActive ? 'page' : undefined"
+            @click="navigate"
+          >
+            <q-icon :name="item.icon" size="20px" class="nav__icon" />
+            <span class="nav__label">{{ item.label }}</span>
+            <span v-if="item.to === '/collections'" class="nav__count">
+              {{ store.data.collections.length }}
+            </span>
+          </a>
+        </router-link>
+      </section>
+    </div>
     <ProjectInfo v-if="!store.uiConfig.hideProjectInfo" />
-  </div>
+  </nav>
 </template>
 
 <script setup lang="ts">
-import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 import { useNodeStore } from '@/stores/node';
+import { NAV_SECTIONS } from '@/shared/navigation';
+import type { NavItem } from '@/shared/navigation';
 import ProjectInfo from './ProjectInfo.vue';
 
 const store = useNodeStore();
+const route = useRoute();
 
-const sortedCollections = computed(() =>
-  store.data.collections.slice(0).sort((a, b) => a.name.localeCompare(b.name)),
+const sections = computed(() =>
+  NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => !item.available || item.available(store)),
+  })).filter((section) => section.items.length),
 );
 
-const filteredCollections = ref<CollectionSchema[]>([]);
-
-function collectionFilterFn(val: string, update: (fn: () => void) => void) {
-  if (val === '') {
-    update(() => {
-      filteredCollections.value = sortedCollections.value;
-    });
-    return;
-  }
-
-  update(() => {
-    const needle = val.toLowerCase();
-    filteredCollections.value = sortedCollections.value.filter((v) =>
-      v.name.toLowerCase().includes(needle),
-    );
-  });
+/** Collections stays marked while you are inside one of its collections. */
+function isCollectionArea(item: NavItem, isExactActive: boolean) {
+  return !isExactActive && item.to === '/collections' && route.path.startsWith('/collection/');
 }
-
-const currentCollection = computed({
-  get() {
-    return store.currentCollection;
-  },
-  set(value: CollectionSchema | null) {
-    void store.loadCurrentCollection(value);
-  },
-});
 </script>
 
-<style scoped>
-.q-item.q-router-link--active,
-.q-item--active {
-  background-color: #fff;
+<style scoped lang="scss">
+.nav {
+  padding: 12px 10px 0;
 }
-.body--dark .q-item.q-router-link--active,
-.body--dark .q-item--active {
-  background-color: #111827;
-  color: #fff;
+
+.nav__section + .nav__section {
+  margin-top: 18px;
+}
+
+.nav__heading {
+  padding: 0 10px 6px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--ts-ink-3);
+  letter-spacing: 0.02em;
+}
+
+.nav__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--ts-ink-2);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition:
+    background 0.12s,
+    color 0.12s;
+
+  &:hover {
+    background: var(--ts-hover);
+    color: var(--ts-ink);
+  }
+
+  &.is-active {
+    color: var(--ts-ink);
+    font-weight: 500;
+
+    .nav__label {
+      // The current page is "highlighted", like a hit in a search result.
+      background: linear-gradient(
+        to bottom,
+        transparent 0 38%,
+        var(--ts-mark) 38% 94%,
+        transparent 94%
+      );
+      padding: 0 3px;
+      margin: 0 -3px;
+      border-radius: 2px;
+    }
+
+    .nav__icon {
+      color: var(--ts-ink);
+    }
+  }
+}
+
+.nav__icon {
+  color: var(--ts-ink-3);
+}
+
+.nav__label {
+  flex: 0 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav__count {
+  margin-left: auto;
+  font-family: var(--ts-font-mono);
+  font-size: 0.72rem;
+  color: var(--ts-ink-3);
 }
 </style>

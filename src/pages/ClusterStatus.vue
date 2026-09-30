@@ -1,14 +1,16 @@
 <template>
-  <q-page padding>
-    <div class="row items-center q-mb-md">
-      <div class="text-h5 q-mr-md">Cluster Status</div>
-      <q-space />
-    </div>
+  <q-page class="ts-page">
+    <page-header
+      title="Cluster"
+      description="Each node of the cluster this server belongs to. Switch to a node to manage it directly."
+    />
 
-    <div v-if="!store.currentClusterTag">
-      <q-banner rounded class="bg-grey-2 text-grey-9 q-pa-md">
-        Current server is not part of a cluster.
-      </q-banner>
+    <div v-if="!store.currentClusterTag" class="ts-sheet">
+      <empty-state
+        icon="sym_s_hub"
+        title="This server isn't part of a cluster here"
+        body="Group servers into a cluster by giving them the same cluster tag in your recent servers (the server menu at the top right)."
+      />
     </div>
 
     <div v-else class="row q-col-gutter-md">
@@ -27,6 +29,8 @@
 import { useNodeStore } from '@/stores/node';
 import type { NodeLoginDataInterface } from '@/stores/node';
 import NodeStatusCard from '../components/NodeStatusCard.vue';
+import PageHeader from '@/components/ui/PageHeader.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
 
 const store = useNodeStore();
 

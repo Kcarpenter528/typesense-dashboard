@@ -1,308 +1,295 @@
 <template>
-  <q-page padding>
-    <div class="row">
-      <div class="col col-12 col-md-8">
-        <q-card flat bordered class="q-mb-md">
-          <q-card-section>
-            <div class="text-h5">System</div>
-            <div class="text-subtitle1 q-pt-md">CPU</div>
-            <q-linear-progress
-              v-if="hasCpuOverall"
-              size="25px"
-              :value="cpuOverallRatio"
-              color="accent"
-            >
-              <div class="absolute-full flex flex-center">
-                <q-badge color="white" text-color="accent" :label="`${cpuOverallPercent}%`" />
+  <q-page class="ts-page">
+    <page-header title="Server status">
+      <template #description>
+        <span class="health" :class="healthClass">
+          <span class="health__dot" aria-hidden="true" />
+          {{ healthLabel }}
+        </span>
+        <span v-if="store.data.health?.resource_error" class="q-ml-sm text-negative">
+          {{ store.data.health.resource_error }}
+        </span>
+        <span class="ts-faint q-ml-sm">· Updates every 2 seconds</span>
+      </template>
+    </page-header>
+
+    <div class="kpis">
+      <stat-tile label="Collections" :value="compact(store.data.collections.length)" />
+      <stat-tile
+        label="Documents"
+        :value="compact(totalDocuments)"
+        :detail="`across ${store.data.collections.length} collections`"
+      />
+      <stat-tile
+        label="Requests per second"
+        :value="stats ? compact(stats.total_requests_per_second ?? 0, 1) : '—'"
+        :detail="
+          stats
+            ? `${compact(stats.search_requests_per_second ?? 0, 1)} searches`
+            : 'Stats unavailable'
+        "
+      />
+      <stat-tile
+        label="Search latency"
+        :value="stats ? `${compact(stats.search_latency_ms ?? 0, 1)} ms` : '—'"
+        :detail="stats ? `Cache hit ratio ${Math.round((stats.cache_hit_ratio ?? 0) * 100)}%` : ''"
+      />
+    </div>
+
+    <div class="grid">
+      <section class="ts-sheet card">
+        <h2 class="ts-section-title q-mb-md">Machine</h2>
+        <div class="meters">
+          <meter-bar
+            v-if="cpu !== null"
+            label="CPU"
+            :ratio="cpu / 100"
+            :value-label="`${Math.round(cpu)}%`"
+          />
+          <meter-bar
+            v-if="memory"
+            label="Memory"
+            :ratio="memory.used / memory.total"
+            :value-label="`${prettyBytes(memory.used)} of ${prettyBytes(memory.total)}`"
+          />
+          <meter-bar
+            v-if="disk"
+            label="Disk"
+            :ratio="disk.used / disk.total"
+            :value-label="`${prettyBytes(disk.used)} of ${prettyBytes(disk.total)}`"
+            detail="Writes are rejected above the server's disk limit."
+          />
+          <div v-if="!hasMetrics" class="ts-faint">This API key can't read machine metrics.</div>
+        </div>
+
+        <template v-if="cores.length">
+          <div class="ts-eyebrow q-mt-lg q-mb-sm">{{ cores.length }} CPU cores</div>
+          <div class="cores">
+            <div v-for="core in cores" :key="core.node" class="core">
+              <div class="core__track">
+                <div class="core__fill" :style="{ height: `${Math.min(100, core.value)}%` }" />
               </div>
-            </q-linear-progress>
-
-            <div class="row q-mt-sm">
-              <div
-                v-for="cpu in sortedCPU"
-                :key="cpu.node"
-                class="col-6 col-sm-4 col-md-3 col-lg-2 q-mb-md flex flex-center"
-              >
-                <div class="column items-center">
-                  <span class="text-overline">CPU {{ cpu.node }}</span>
-                  <q-circular-progress
-                    show-value
-                    :value="cpu.value"
-                    size="50px"
-                    color="accent"
-                    track-color="grey-3"
-                  />
-                </div>
-              </div>
-            </div>
-            <div class="text-subtitle1 q-pt-md">Memory</div>
-            <q-linear-progress
-              v-if="hasSystemMemory"
-              size="25px"
-              :value="systemMemoryRatio"
-              color="accent"
-            >
-              <div class="absolute-full flex flex-center">
-                <q-badge
-                  color="white"
-                  text-color="accent"
-                  :label="prettyBytes(systemMemoryUsedBytes!)"
-                />
-              </div>
-              <div class="absolute-full flex justify-end">
-                <q-badge
-                  color="white"
-                  text-color="accent"
-                  :label="prettyBytes(systemMemoryTotalBytes!)"
-                />
-              </div>
-            </q-linear-progress>
-
-            <div class="text-subtitle1 q-pt-md">Disk</div>
-
-            <q-linear-progress
-              v-if="hasSystemDisk"
-              size="25px"
-              :value="systemDiskRatio"
-              color="accent"
-            >
-              <div class="absolute-full flex flex-center">
-                <q-badge
-                  color="white"
-                  text-color="accent"
-                  :label="prettyBytes(systemDiskUsedBytes!)"
-                />
-              </div>
-              <div class="absolute-full flex justify-end">
-                <q-badge
-                  color="white"
-                  text-color="accent"
-                  :label="prettyBytes(systemDiskTotalBytes!)"
-                />
-              </div>
-            </q-linear-progress>
-            <div class="text-subtitle1 q-pt-md">System Network</div>
-            <div>
-              Received:
-              {{ systemNetworkReceivedLabel }}
-              Sent:
-              {{ systemNetworkSentLabel }}
-            </div>
-          </q-card-section>
-        </q-card>
-        <q-card flat bordered class="q-mb-md">
-          <q-item clickable to="/settings">
-            <q-item-section avatar><q-icon name="sym_s_settings" /></q-item-section>
-            <q-item-section>
-              <q-item-label>Settings and operations</q-item-label>
-              <q-item-label caption>
-                Runtime settings, cache, compaction, snapshots and startup configuration (CORS)
-              </q-item-label>
-            </q-item-section>
-            <q-item-section side><q-icon name="sym_s_chevron_right" /></q-item-section>
-          </q-item>
-        </q-card>
-      </div>
-      <q-card flat bordered class="col-12 col-md-3 offset-md-1 q-mb-md">
-        <q-card-section>
-          <div class="text-h5">Typesense</div>
-
-          <div class="text-subtitle1 q-pt-md">
-            Node
-            <health-tag :health="store.data.health"></health-tag>
-          </div>
-
-          <div>Protocol: {{ store.loginData?.node.protocol }}</div>
-          <div>Host: {{ store.loginData?.node.host }}</div>
-          <div>Port: {{ store.loginData?.node.port }}</div>
-          <div>Connection Timeout: {{ connectionTimeoutDisplay }}</div>
-          <div v-if="store.data.debug.version">Version: {{ store.data.debug.version }}</div>
-          <div v-if="Object.hasOwnProperty.call(store.data.debug, 'state')">
-            Role:
-            {{ store.data.debug.state === 1 ? 'Leader' : 'Follower' }}
-          </div>
-
-          <template v-if="store.currentClusterTag">
-            <div class="text-subtitle1 q-pt-md">Cluster: {{ store.currentClusterTag }}</div>
-            <q-list dense separator class="q-mt-xs">
-              <q-item
-                v-for="(member, idx) in store.clusterMembersForCurrent"
-                :key="idx"
-                clickable
-                :disable="store.isCurrent(member)"
-                @click="connectTo(member)"
-              >
-                <q-item-section>
-                  {{ member.node.protocol }}://{{ member.node.host }}:{{ member.node.port }}
-                </q-item-section>
-                <q-item-section side>
-                  <q-chip
-                    v-if="store.isCurrent(member)"
-                    color="positive"
-                    text-color="white"
-                    dense
-                    size="sm"
-                  >
-                    Current
-                  </q-chip>
-                  <q-btn v-else flat dense size="sm" label="Connect" />
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </template>
-
-          <div class="text-subtitle1 q-pt-md">Memory</div>
-          <div
-            v-for="metric in Object.keys(store.data.metrics).filter((m) => m.includes('typesense'))"
-            :key="metric"
-          >
-            {{ metric.split('_')[2] }} :
-            {{
-              metric.includes('bytes')
-                ? prettyBytes(parseInt(store.data.metrics[metric], 10))
-                : store.data.metrics[metric]
-            }}
-          </div>
-          <div class="text-subtitle1 q-pt-md">Stats</div>
-          <div v-if="!store.data.features.stats">Stats are not enabled on this node.</div>
-          <div v-for="(content, label) in store.data.stats" :key="label">
-            <div v-if="isObject(content)">
-              {{ label }}
-              <div v-for="(value, entry) in content" :key="entry">{{ entry }} : {{ value }}</div>
+              <span class="core__label">{{ core.node }}</span>
+              <q-tooltip>Core {{ core.node }}: {{ Math.round(core.value) }}%</q-tooltip>
             </div>
           </div>
-        </q-card-section>
-      </q-card>
+        </template>
+
+        <div v-if="network" class="network">
+          <span><q-icon name="sym_s_south" size="16px" /> {{ network.received }} received</span>
+          <span><q-icon name="sym_s_north" size="16px" /> {{ network.sent }} sent</span>
+        </div>
+      </section>
+
+      <section class="ts-sheet card">
+        <h2 class="ts-section-title q-mb-md">This node</h2>
+        <dl class="facts">
+          <dt>Address</dt>
+          <dd class="text-mono">{{ address }}</dd>
+          <dt>Version</dt>
+          <dd>{{ store.data.debug?.version ?? '—' }}</dd>
+          <dt>Role</dt>
+          <dd>{{ role }}</dd>
+          <dt>Timeout</dt>
+          <dd>{{ connectionTimeoutDisplay }}</dd>
+        </dl>
+
+        <template v-if="store.currentClusterTag">
+          <div class="ts-eyebrow q-mt-lg q-mb-xs">Cluster {{ store.currentClusterTag }}</div>
+          <q-list dense separator class="cluster">
+            <q-item
+              v-for="(member, idx) in store.clusterMembersForCurrent"
+              :key="idx"
+              :clickable="!store.isCurrent(member)"
+              @click="!store.isCurrent(member) && connectTo(member)"
+            >
+              <q-item-section class="text-mono">
+                {{ member.node.host }}:{{ member.node.port }}
+              </q-item-section>
+              <q-item-section side>
+                <span v-if="store.isCurrent(member)" class="ts-faint text-caption">Connected</span>
+                <span v-else class="text-primary text-caption">Switch</span>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </template>
+
+        <q-btn
+          flat
+          no-caps
+          color="primary"
+          icon="sym_s_tune"
+          label="Settings and operations"
+          class="q-mt-lg"
+          to="/settings"
+        />
+      </section>
+    </div>
+
+    <div class="grid q-mt-md">
+      <section class="ts-sheet card">
+        <h2 class="ts-section-title q-mb-sm">Traffic by endpoint</h2>
+        <table v-if="endpoints.length" class="data-table">
+          <thead>
+            <tr>
+              <th>Endpoint</th>
+              <th class="num">Requests/s</th>
+              <th class="num">Latency</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="e in endpoints" :key="e.name">
+              <td class="text-mono">{{ e.name }}</td>
+              <td class="num">{{ e.rps.toFixed(1) }}</td>
+              <td class="num">{{ e.latency.toFixed(1) }} ms</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else class="ts-faint q-py-md">
+          {{
+            store.data.features.stats
+              ? 'No requests in the last few seconds.'
+              : "This API key can't read request stats."
+          }}
+        </div>
+      </section>
+
+      <section class="ts-sheet card">
+        <h2 class="ts-section-title q-mb-sm">Typesense memory</h2>
+        <table v-if="typesenseMemory.length" class="data-table">
+          <tbody>
+            <tr v-for="m in typesenseMemory" :key="m.name">
+              <td>{{ m.name }}</td>
+              <td class="num">{{ m.value }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else class="ts-faint q-py-md">Not reported by this node.</div>
+      </section>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted } from 'vue';
+import prettyBytes from 'pretty-bytes';
 import { useNodeStore } from '@/stores/node';
 import type { NodeLoginDataInterface } from '@/stores/node';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import prettyBytes from 'pretty-bytes';
-import HealthTag from '@/components/HealthTag.vue';
+import PageHeader from '@/components/ui/PageHeader.vue';
+import StatTile from '@/components/ui/StatTile.vue';
+import MeterBar from '@/components/ui/Meter.vue';
+
+interface Stats {
+  total_requests_per_second?: number;
+  search_requests_per_second?: number;
+  search_latency_ms?: number;
+  cache_hit_ratio?: number;
+  latency_ms?: Record<string, number>;
+  requests_per_second?: Record<string, number>;
+}
 
 const store = useNodeStore();
+let refreshInterval: number | undefined;
 
-const refreshInterval = ref<number | undefined>(undefined);
-function isObject(obj: unknown) {
-  return typeof obj === 'object';
+const metrics = computed(() => store.data.metrics as Record<string, unknown>);
+const stats = computed(() => (store.data.features.stats ? (store.data.stats as Stats) : null));
+
+function num(key: string): number | null {
+  const raw = metrics.value?.[key];
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' ? parseFloat(raw) : NaN;
+  return Number.isFinite(n) ? n : null;
 }
 
-onMounted(() => {
-  refreshInterval.value = window.setInterval(() => {
-    store.refreshServerStatus();
-  }, 2000);
+const numberFormat = new Intl.NumberFormat(undefined, {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
+function compact(value: number, digits = 0) {
+  return value < 1000 ? value.toFixed(digits).replace(/\.0$/, '') : numberFormat.format(value);
+}
+
+const hasMetrics = computed(() => Object.keys(metrics.value ?? {}).length > 0);
+const cpu = computed(() => num('system_cpu_active_percentage'));
+
+function pair(usedKey: string, totalKey: string) {
+  const used = num(usedKey);
+  const total = num(totalKey);
+  return used !== null && total ? { used, total } : null;
+}
+const memory = computed(() => pair('system_memory_used_bytes', 'system_memory_total_bytes'));
+const disk = computed(() => pair('system_disk_used_bytes', 'system_disk_total_bytes'));
+
+const network = computed(() => {
+  const received = num('system_network_received_bytes');
+  const sent = num('system_network_sent_bytes');
+  return received === null || sent === null
+    ? null
+    : { received: prettyBytes(received), sent: prettyBytes(sent) };
 });
 
-onBeforeUnmount(() => {
-  window.clearInterval(refreshInterval.value);
-});
-
-const sortedCPU = computed(() => {
-  return Object.entries(store.data.metrics)
+const cores = computed(() =>
+  Object.entries(metrics.value ?? {})
     .filter(([key]) => /^system_cpu\d+_active_percentage$/.test(key))
+    .map(([key, value]) => ({
+      node: parseInt(key.replace('system_cpu', ''), 10) || 0,
+      value: parseFloat(String(value)),
+    }))
+    .filter((c) => Number.isFinite(c.value))
+    .sort((a, b) => a.node - b.node),
+);
+
+const typesenseMemory = computed(() =>
+  Object.entries(metrics.value ?? {})
+    .filter(([key]) => key.startsWith('typesense_memory_'))
     .map(([key, value]) => {
-      let node = 0;
-      const keyData = key.split('_');
-      if (keyData.length > 1 && keyData[1]) {
-        node = parseInt(keyData[1].replace('cpu', '')) || 0;
-      }
+      const name = key
+        .replace('typesense_memory_', '')
+        .replace(/_bytes$/, '')
+        .replace(/_/g, ' ');
+      const n = parseFloat(String(value));
       return {
-        node,
-        value: parseFloat(value as string),
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        value: key.endsWith('_bytes') && Number.isFinite(n) ? prettyBytes(n) : String(value),
       };
-    })
-    .filter((cpu) => Number.isFinite(cpu.value))
-    .sort((a, b) => a.node - b.node);
-});
-
-const hasCpuOverall = computed(() =>
-  Object.prototype.hasOwnProperty.call(store.data.metrics, 'system_cpu_active_percentage'),
+    }),
 );
 
-const cpuOverallRatio = computed(() => {
-  const metrics = store.data.metrics as Record<string, unknown> | undefined;
-  const raw = metrics ? metrics['system_cpu_active_percentage'] : undefined;
-  const v = typeof raw === 'number' ? raw : typeof raw === 'string' ? parseFloat(raw) : NaN;
-  if (!isFinite(v)) return 0;
-  return Math.max(0, Math.min(1, v / 100));
+const endpoints = computed(() => {
+  const rps = stats.value?.requests_per_second ?? {};
+  const latency = stats.value?.latency_ms ?? {};
+  return Object.keys({ ...rps, ...latency })
+    .map((name) => ({ name, rps: rps[name] ?? 0, latency: latency[name] ?? 0 }))
+    .sort((a, b) => b.rps - a.rps);
 });
 
-const cpuOverallPercent = computed(() => Math.round(cpuOverallRatio.value * 100));
-
-function toFiniteNumber(v: unknown): number | null {
-  if (typeof v === 'number') {
-    return Number.isFinite(v) ? v : null;
-  }
-  if (typeof v === 'string') {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
-}
-
-const systemMemoryUsedBytes = computed(() =>
-  toFiniteNumber((store.data.metrics as Record<string, unknown>)?.system_memory_used_bytes),
+const totalDocuments = computed(() =>
+  store.data.collections.reduce((sum, c) => sum + (c.num_documents ?? 0), 0),
 );
 
-const systemMemoryTotalBytes = computed(() =>
-  toFiniteNumber((store.data.metrics as Record<string, unknown>)?.system_memory_total_bytes),
-);
-
-const hasSystemMemory = computed(() => {
-  const used = systemMemoryUsedBytes.value;
-  const total = systemMemoryTotalBytes.value;
-  return used !== null && total !== null && total > 0;
+const healthClass = computed(() => {
+  if (!store.data.features.health) return 'is-unknown';
+  return store.data.health?.ok ? 'is-ok' : 'is-bad';
+});
+const healthLabel = computed(() => {
+  if (!store.data.features.health) return 'Health unknown';
+  return store.data.health?.ok ? 'Healthy' : 'Not healthy';
 });
 
-const systemMemoryRatio = computed(() => {
-  if (!hasSystemMemory.value) return 0;
-  const ratio = (systemMemoryUsedBytes.value as number) / (systemMemoryTotalBytes.value as number);
-  if (!Number.isFinite(ratio)) return 0;
-  return Math.max(0, Math.min(1, ratio));
+const address = computed(() => {
+  const node = store.loginData?.node;
+  return node ? `${node.protocol}://${node.host}:${node.port}${node.path ?? ''}` : '';
 });
 
-const systemDiskUsedBytes = computed(() =>
-  toFiniteNumber((store.data.metrics as Record<string, unknown>)?.system_disk_used_bytes),
-);
-
-const systemDiskTotalBytes = computed(() =>
-  toFiniteNumber((store.data.metrics as Record<string, unknown>)?.system_disk_total_bytes),
-);
-
-const hasSystemDisk = computed(() => {
-  const used = systemDiskUsedBytes.value;
-  const total = systemDiskTotalBytes.value;
-  return used !== null && total !== null && total > 0;
-});
-
-const systemDiskRatio = computed(() => {
-  if (!hasSystemDisk.value) return 0;
-  const ratio = (systemDiskUsedBytes.value as number) / (systemDiskTotalBytes.value as number);
-  if (!Number.isFinite(ratio)) return 0;
-  return Math.max(0, Math.min(1, ratio));
-});
-
-const systemNetworkReceivedLabel = computed(() => {
-  const v = toFiniteNumber(
-    (store.data.metrics as Record<string, unknown>)?.system_network_received_bytes,
-  );
-  return v === null ? '—' : prettyBytes(v);
-});
-
-const systemNetworkSentLabel = computed(() => {
-  const v = toFiniteNumber(
-    (store.data.metrics as Record<string, unknown>)?.system_network_sent_bytes,
-  );
-  return v === null ? '—' : prettyBytes(v);
+const role = computed(() => {
+  const state = store.data.debug?.state;
+  if (state === 1) return 'Leader';
+  if (state === 4) return 'Follower';
+  return state === undefined ? '—' : `State ${String(state)}`;
 });
 
 const connectionTimeoutDisplay = computed(() => {
   const timeout = store.loginData?.connectionTimeoutSeconds;
-  return timeout !== undefined ? `${timeout}s` : 'Default';
+  return timeout !== undefined ? `${timeout} s` : 'Default';
 });
 
 function connectTo(member: NodeLoginDataInterface) {
@@ -316,4 +303,150 @@ function connectTo(member: NodeLoginDataInterface) {
   }
   void store.login(payload);
 }
+
+onMounted(() => {
+  store.refreshServerStatus();
+  refreshInterval = window.setInterval(() => store.refreshServerStatus(), 2000);
+});
+
+onBeforeUnmount(() => window.clearInterval(refreshInterval));
 </script>
+
+<style scoped lang="scss">
+.health {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--ts-ink);
+}
+
+.health__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ts-ink-3);
+  .is-ok & {
+    background: var(--q-positive);
+  }
+  .is-bad & {
+    background: var(--q-negative);
+  }
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: start;
+  @media (max-width: 1023px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  padding: 18px 20px;
+}
+
+.meters {
+  display: grid;
+  gap: 18px;
+}
+
+.cores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(26px, 1fr));
+  gap: 6px;
+}
+
+.core {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.core__track {
+  position: relative;
+  width: 100%;
+  height: 44px;
+  border-radius: 4px;
+  background: var(--ts-primary-soft);
+  overflow: hidden;
+}
+
+.core__fill {
+  position: absolute;
+  inset: auto 0 0;
+  border-radius: 4px;
+  background: var(--ts-primary);
+  transition: height 0.4s ease;
+}
+
+.core__label {
+  font-family: var(--ts-font-mono);
+  font-size: 0.68rem;
+  color: var(--ts-ink-3);
+}
+
+.network {
+  display: flex;
+  gap: 20px;
+  margin-top: 18px;
+  font-size: 0.85rem;
+  color: var(--ts-ink-2);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 0.9rem;
+  dt {
+    color: var(--ts-ink-3);
+  }
+  dd {
+    margin: 0;
+    color: var(--ts-ink);
+    word-break: break-all;
+  }
+}
+
+.cluster {
+  border: 1px solid var(--ts-rule);
+  border-radius: 8px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 0.75rem;
+    color: var(--ts-ink-3);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--ts-rule);
+  }
+  td {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--ts-rule);
+    color: var(--ts-ink);
+  }
+  tr:last-child td {
+    border-bottom: 0;
+  }
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+</style>

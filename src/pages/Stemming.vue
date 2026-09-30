@@ -1,225 +1,462 @@
 <template>
-  <q-page padding>
-    <q-expansion-item
-      v-model="state.expanded"
-      expand-separator
-      icon="sym_s_add_circle"
-      expand-icon="sym_s_unfold_more"
-      expanded-icon="sym_s_unfold_less"
-      :label="`${isUpdate ? 'Update' : 'Add'} Stemming Dictionary`"
-      header-class="bg-primary text-white"
+  <q-page class="ts-page">
+    <page-header
+      title="Stemming"
+      description="A stemming dictionary maps words to their root, such as people → person, so a search for one finds the other. Attach it to a field with stem_dictionary in the schema."
     >
-      <q-card>
-        <q-tabs
-          v-model="tab"
-          dense
-          class="text-grey"
-          active-color="primary"
-          indicator-color="primary"
-          align="justify"
-          narrow-indicator
-        >
-          <q-tab name="form" label="Upload Mode" />
-          <q-tab name="json" label="JSON Mode" />
-        </q-tabs>
-        <q-separator />
-        <q-tab-panels v-model="tab" animated class="bg-surface">
-          <q-tab-panel name="form">
-            <q-card-section class="q-col-gutter-md row">
-              <q-input
-                v-model="state.stemmingDictionary.id"
-                class="col-12 col-sm-6"
-                label="ID"
-                filled
-                :rules="[(val) => !!val || 'Field is required']"
-              />
-              <q-btn
-                type="a"
-                icon="sym_s_help"
-                no-caps
-                color="info"
-                flat
-                dense
-                :href="`https://typesense.org/docs/${store.data.debug.version || store.data.defaultDocVersion}/api/stemming.html`"
-                target="_blank"
-              >
-                Documentation
-              </q-btn>
-            </q-card-section>
-            <q-card-section class="q-col-gutter-md row">
-              <q-btn
-                unelevated
-                :disable="!$q.platform.is.electron"
-                icon="sym_s_attach_file"
-                @click="importFile()"
-              >
-                Import from file
-                <span v-if="!$q.platform.is.electron"> (only desktop version)</span>
-              </q-btn>
-            </q-card-section>
-          </q-tab-panel>
-          <q-tab-panel name="json" class="q-pa-none">
-            <monaco-editor v-model="ruleJson" style="height: 60vh"></monaco-editor>
-            <q-banner v-if="jsonError" inline-actions class="text-white bg-red">
-              Invalid Format: {{ jsonError }}
-            </q-banner>
-          </q-tab-panel>
-        </q-tab-panels>
-
-        <q-card-actions align="right" class="bg-primary">
-          <q-btn
-            size="md"
-            padding="sm lg"
-            unelevated
-            color="primary"
-            :disable="!!jsonError"
-            @click="createStemmingDictionary()"
-            >{{ isUpdate ? 'Append' : 'Add' }} Dictionary
-          </q-btn>
-        </q-card-actions>
-      </q-card>
-    </q-expansion-item>
+      <q-btn
+        unelevated
+        no-caps
+        color="primary"
+        icon="sym_s_add"
+        label="New dictionary"
+        @click="newDictionary"
+      />
+    </page-header>
 
     <q-table
-      class="q-mt-md"
+      class="ts-table"
       flat
       bordered
-      wrap-cells
       :filter="state.filter"
       :rows="rows"
-      :columns="state.columns"
+      :columns="columns"
       row-key="id"
+      :pagination="{ rowsPerPage: 25, sortBy: 'id' }"
+      :rows-per-page-options="[25, 50, 100, 0]"
     >
-      <template #top-left>
-        <div class="text-h6">
-          <q-icon size="md" name="sym_s_playlist_remove" />
-          Stemming Dictionaries
-        </div>
-      </template>
-      <template #top-right>
-        <q-input v-model="state.filter" borderless dense debounce="300" placeholder="Search">
-          <template #append>
-            <q-icon name="sym_s_search" />
-          </template>
+      <template #top>
+        <q-input
+          v-model="state.filter"
+          class="ts-filter"
+          dense
+          outlined
+          debounce="200"
+          placeholder="Filter dictionaries"
+          aria-label="Filter dictionaries"
+        >
+          <template #prepend><q-icon name="sym_s_search" size="18px" /></template>
         </q-input>
       </template>
-      <template #body-cell-actions_op="props">
-        <q-td class="text-right text-no-wrap">
-          <q-btn
-            flat
-            icon="sym_s_edit"
-            title="Edit"
-            @click="editStemmingDictionary(props.row.id)"
-          ></q-btn>
-          <q-btn
-            flat
-            color="negative"
-            icon="sym_s_delete_forever"
-            title="Delete"
-            @click="deleteStemmingDictionary(props.row.id)"
-          ></q-btn>
+      <template #body-cell-id="props">
+        <q-td :props="props"
+          ><code>{{ props.value }}</code></q-td
+        >
+      </template>
+      <template #body-cell-usedBy="props">
+        <q-td :props="props">
+          <span v-if="!props.value.length" class="ts-faint">Not used by any field</span>
+          <code v-for="f in props.value" :key="f" class="q-mr-sm">{{ f }}</code>
         </q-td>
       </template>
+      <template #body-cell-actions="props">
+        <q-td :props="props" class="text-no-wrap">
+          <q-btn
+            flat
+            round
+            dense
+            size="sm"
+            icon="sym_s_edit"
+            aria-label="Edit dictionary"
+            @click="editDictionary(props.row.id)"
+          >
+            <q-tooltip>Edit</q-tooltip>
+          </q-btn>
+          <q-btn
+            flat
+            round
+            dense
+            size="sm"
+            icon="sym_s_delete"
+            aria-label="Delete dictionary"
+            class="ts-danger-hover"
+            @click="deleteDictionary(props.row.id)"
+          >
+            <q-tooltip>Delete</q-tooltip>
+          </q-btn>
+        </q-td>
+      </template>
+      <template #no-data>
+        <empty-state
+          v-if="!state.filter"
+          icon="sym_s_spellcheck"
+          title="Create a stemming dictionary"
+          body="Useful for irregular words the built-in stemmer misses, such as children → child."
+        >
+          <q-btn unelevated no-caps color="primary" label="New dictionary" @click="newDictionary" />
+        </empty-state>
+        <div v-else class="full-width text-center ts-faint q-pa-lg">
+          No dictionary matches “{{ state.filter }}”.
+        </div>
+      </template>
     </q-table>
+
+    <side-sheet
+      v-model="state.sheetOpen"
+      :title="state.editing ? `Edit ${state.id}` : 'New stemming dictionary'"
+      description="Each pair maps a word to the root it should match."
+      width="min(620px, 100vw)"
+    >
+      <q-form id="stemming-form" class="column q-gutter-md" @submit="saveDictionary">
+        <q-input
+          v-model="state.id"
+          outlined
+          label="Dictionary name"
+          placeholder="irregular-plurals"
+          :readonly="state.editing"
+          lazy-rules
+          :rules="[(val) => !!val || 'Enter a name']"
+        />
+
+        <div>
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="ts-eyebrow">{{ state.pairs.length }} word pairs</div>
+            <div class="row q-gutter-xs">
+              <q-btn
+                flat
+                dense
+                no-caps
+                size="sm"
+                icon="sym_s_upload_file"
+                label="Import file"
+                @click="fileInput?.click()"
+              />
+              <q-btn
+                flat
+                dense
+                no-caps
+                size="sm"
+                icon="sym_s_add"
+                label="Add pair"
+                @click="addPair"
+              />
+            </div>
+          </div>
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".jsonl,.json,.txt"
+            class="hidden"
+            @change="importFile"
+          />
+
+          <div class="pairs">
+            <div class="pairs__head row no-wrap">
+              <div class="col">Word</div>
+              <div class="pairs__arrow" />
+              <div class="col">Root</div>
+              <div class="pairs__remove" />
+            </div>
+            <div
+              v-for="(pair, index) in visiblePairs"
+              :key="index"
+              class="pairs__row row no-wrap items-center"
+            >
+              <input
+                v-model="pair.word"
+                class="col pairs__input"
+                placeholder="people"
+                aria-label="Word"
+              />
+              <q-icon name="sym_s_arrow_forward" size="16px" class="pairs__arrow" />
+              <input
+                v-model="pair.root"
+                class="col pairs__input"
+                placeholder="person"
+                aria-label="Root"
+              />
+              <q-btn
+                flat
+                round
+                dense
+                size="xs"
+                icon="sym_s_close"
+                class="pairs__remove"
+                aria-label="Remove pair"
+                @click="removePair(pair)"
+              />
+            </div>
+            <div v-if="state.pairs.length > visiblePairs.length" class="pairs__more ts-faint">
+              Showing the first {{ visiblePairs.length }} of {{ state.pairs.length }} pairs. All of
+              them are saved.
+            </div>
+            <div v-if="!state.pairs.length" class="pairs__more ts-faint">
+              Add pairs one by one, or import a JSONL file with one {"word": "…", "root": "…"} per
+              line.
+            </div>
+          </div>
+          <div
+            v-if="state.importMessage"
+            class="text-caption q-mt-sm"
+            :class="state.importError ? 'text-negative' : 'ts-muted'"
+          >
+            {{ state.importMessage }}
+          </div>
+        </div>
+      </q-form>
+      <template #actions>
+        <q-btn v-close-popup flat no-caps label="Cancel" />
+        <q-btn
+          unelevated
+          no-caps
+          color="primary"
+          type="submit"
+          form="stemming-form"
+          :label="state.editing ? 'Save dictionary' : 'Create dictionary'"
+          :loading="state.saving"
+        />
+      </template>
+    </side-sheet>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { useNodeStore } from '@/stores/node';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useQuasar } from 'quasar';
-import MonacoEditor from '@/components/MonacoEditor.vue';
 import type { QTableProps } from 'quasar';
+import { useNodeStore } from '@/stores/node';
+import PageHeader from '@/components/ui/PageHeader.vue';
+import SideSheet from '@/components/ui/SideSheet.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+
+interface Pair {
+  word: string;
+  root: string;
+}
 
 const $q = useQuasar();
 const store = useNodeStore();
+const fileInput = ref<HTMLInputElement | null>(null);
 
-const rows = computed(() => store.data.stemmingDictionaries.map((id) => ({ id })));
+/** Rendering thousands of inputs is slow; long dictionaries show a window. */
+const MAX_VISIBLE = 300;
 
-const state = reactive({
-  stemmingDictionary: {
-    id: 'irregular-plurals',
-    words: [
-      { root: 'person', word: 'people' },
-      { root: 'child', word: 'children' },
-      { root: 'goose', word: 'geese' },
-    ],
-  },
-  expanded: store.data.stemmingDictionaries.length === 0,
+const state = reactive<{
+  id: string;
+  pairs: Pair[];
+  original: Pair[];
+  editing: boolean;
+  sheetOpen: boolean;
+  saving: boolean;
+  importMessage: string;
+  importError: boolean;
+  filter: string;
+}>({
+  id: '',
+  pairs: [],
+  original: [],
+  editing: false,
+  sheetOpen: false,
+  saving: false,
+  importMessage: '',
+  importError: false,
   filter: '',
-  columns: [
-    {
-      label: 'ID',
-      name: 'id',
-      field: 'id',
-      sortable: true,
-      align: 'left',
-    },
-    {
-      label: 'Actions',
-      name: 'actions_op',
-      align: 'right',
-    },
-  ] as QTableProps['columns'],
 });
 
-const tab = ref('json');
-const ruleJson = computed({
-  get() {
-    return JSON.stringify(state.stemmingDictionary, null, 2);
-  },
-  set(json: string) {
-    try {
-      state.stemmingDictionary = JSON.parse(json);
-      jsonError.value = null;
-    } catch (e) {
-      jsonError.value = (e as Error).message;
-    }
-  },
-});
-const jsonError = ref<string | null>(null);
-
-const isUpdate = computed(() =>
-  store.data.stemmingDictionaries.includes(state.stemmingDictionary.id),
+const rows = computed(() =>
+  store.data.stemmingDictionaries.map((id) => ({
+    id,
+    usedBy: store.data.collections.flatMap((c) =>
+      (c.fields ?? []).filter((f) => f.stem_dictionary === id).map((f) => `${c.name}.${f.name}`),
+    ),
+  })),
 );
 
-async function createStemmingDictionary() {
-  await store.upsertStemmingDictionaries(JSON.parse(JSON.stringify(state.stemmingDictionary)));
+const columns: QTableProps['columns'] = [
+  { label: 'Dictionary', name: 'id', field: 'id', align: 'left', sortable: true },
+  { label: 'Used by', name: 'usedBy', field: 'usedBy', align: 'left' },
+  { label: '', name: 'actions', field: 'id', align: 'right' },
+];
+
+const visiblePairs = computed(() => state.pairs.slice(0, MAX_VISIBLE));
+
+function cleanPairs(pairs: Pair[]) {
+  return pairs
+    .map((p) => ({ word: p.word.trim(), root: p.root.trim() }))
+    .filter((p) => p.word && p.root);
 }
 
-async function editStemmingDictionary(id: string) {
-  state.stemmingDictionary = (await store.getStemmingDictionary(id)) || state.stemmingDictionary;
-  state.expanded = true;
+function resetImport() {
+  state.importMessage = '';
+  state.importError = false;
 }
 
-function deleteStemmingDictionary(id: string) {
+function newDictionary() {
+  state.id = '';
+  state.pairs = [{ word: '', root: '' }];
+  state.original = [];
+  state.editing = false;
+  resetImport();
+  state.sheetOpen = true;
+}
+
+async function editDictionary(id: string) {
+  const dictionary = (await store.getStemmingDictionary(id)) as { words?: Pair[] } | undefined;
+  state.id = id;
+  state.pairs = (dictionary?.words ?? []).map((w) => ({ word: w.word, root: w.root }));
+  state.original = cleanPairs(state.pairs);
+  state.editing = true;
+  resetImport();
+  state.sheetOpen = true;
+}
+
+function addPair() {
+  state.pairs.unshift({ word: '', root: '' });
+}
+
+function removePair(pair: Pair) {
+  state.pairs.splice(state.pairs.indexOf(pair), 1);
+}
+
+/** Reads JSONL (or a JSON array) of {word, root} pairs in the browser. */
+async function importFile(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  resetImport();
+  const text = await file.text();
+  try {
+    const trimmed = text.trim();
+    const items: unknown[] = trimmed.startsWith('[')
+      ? JSON.parse(trimmed)
+      : trimmed
+          .split('\n')
+          .filter((l) => l.trim())
+          .map((l) => JSON.parse(l));
+    const pairs = items
+      .filter((i): i is Pair => !!i && typeof i === 'object' && 'word' in i && 'root' in i)
+      .map((i) => ({ word: String(i.word), root: String(i.root) }));
+    state.pairs = [...cleanPairs(state.pairs), ...pairs];
+    state.importMessage = `Added ${pairs.length} pairs from ${file.name}.`;
+  } catch (e) {
+    state.importError = true;
+    state.importMessage = `${file.name} isn't JSONL or a JSON array: ${(e as Error).message}`;
+  }
+}
+
+async function upload(pairs: Pair[]) {
+  await store.upsertStemmingDictionaries({ id: state.id, words: pairs });
+  return !store.error;
+}
+
+async function saveDictionary() {
+  const pairs = cleanPairs(state.pairs);
+  if (!pairs.length) {
+    state.importError = true;
+    state.importMessage = 'Add at least one word pair.';
+    return;
+  }
+  // Importing only ever adds pairs; removing one means rebuilding the dictionary.
+  const key = (p: Pair) => `${p.word}\u0000${p.root}`;
+  const kept = new Set(pairs.map(key));
+  const removed = state.original.filter((p) => !kept.has(key(p)));
+
+  const finish = async (rebuild: boolean) => {
+    state.saving = true;
+    if (rebuild) await store.deleteStemmingDictionary(state.id);
+    const ok = await upload(pairs);
+    state.saving = false;
+    if (ok) {
+      state.sheetOpen = false;
+      $q.notify({
+        type: 'positive',
+        position: 'top',
+        timeout: 1500,
+        message: state.editing ? 'Dictionary saved' : 'Dictionary created',
+      });
+    }
+  };
+
+  if (removed.length) {
+    $q.dialog({
+      title: `Remove ${removed.length} ${removed.length === 1 ? 'pair' : 'pairs'}?`,
+      message:
+        'Typesense can only add pairs to a dictionary, so it will be deleted and created again with the pairs shown here. Searches may miss stemmed words for a moment.',
+      cancel: { flat: true, noCaps: true, label: 'Cancel' },
+      ok: { unelevated: true, noCaps: true, color: 'primary', label: 'Rebuild dictionary' },
+    }).onOk(() => void finish(true));
+    return;
+  }
+  await finish(false);
+}
+
+function deleteDictionary(id: string) {
+  const usedBy = rows.value.find((r) => r.id === id)?.usedBy ?? [];
   $q.dialog({
-    title: 'Confirm',
-    message: `Delete stemming dictionary ${id}?`,
-    cancel: true,
-    persistent: true,
+    title: `Delete dictionary ${id}?`,
+    message: usedBy.length
+      ? `It's used by ${usedBy.join(', ')}. Those fields fall back to the default stemmer.`
+      : "It isn't used by any field.",
+    cancel: { flat: true, noCaps: true, label: 'Cancel' },
+    ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete dictionary' },
   }).onOk(() => {
     void store.deleteStemmingDictionary(id);
   });
-}
-
-async function importFile() {
-  try {
-    $q.loading.show({
-      message: 'Uploading. Please wait...',
-      boxClass: 'bg-grey-2 text-grey-9',
-      spinnerColor: 'primary',
-    });
-    // @ts-expect-error electron only
-    await store.api?.importStemmingFile(state.stemmingDictionary.id);
-    void store.getStemmingDictionaries();
-  } catch (error) {
-    console.error(error);
-  }
-  $q.loading.hide();
 }
 
 onMounted(() => {
   void store.getStemmingDictionaries();
 });
 </script>
+
+<style scoped lang="scss">
+.pairs {
+  border: 1px solid var(--ts-rule);
+  border-radius: 10px;
+  overflow: hidden;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+
+.pairs__head {
+  position: sticky;
+  top: 0;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--ts-sheet-2);
+  border-bottom: 1px solid var(--ts-rule);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ts-ink-3);
+}
+
+.pairs__row {
+  gap: 8px;
+  padding: 4px 6px 4px 10px;
+  border-bottom: 1px solid var(--ts-rule);
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.pairs__input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  padding: 6px 4px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ts-ink);
+  font-family: var(--ts-font-mono);
+  font-size: 0.85rem;
+  &:focus {
+    background: var(--ts-primary-soft);
+  }
+}
+
+.pairs__arrow {
+  width: 16px;
+  color: var(--ts-ink-3);
+}
+
+.pairs__remove {
+  width: 24px;
+  color: var(--ts-ink-3);
+}
+
+.pairs__more {
+  padding: 10px;
+  font-size: 0.8rem;
+}
+</style>

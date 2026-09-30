@@ -1,87 +1,112 @@
 <template>
-  <div class="bg-primary text-center q-pa-md column no-wrap window-height overflow-auto">
-    <div class="row justify-center full-width q-my-auto">
-      <div class="col-12 col-sm-8 col-md-6 col-lg-4">
-        <div>
-          <h5 class="text-h5 text-white q-my-md">Typesense Dashboard</h5>
-        </div>
-        <div>
-          <q-card bordered class="q-pa-lg shadow-1">
-            <q-card-section>
-              <q-form class="q-gutter-md">
-                <q-input v-model="apiKey" filled type="password" label="Api Key" />
-                <p v-if="$q.platform.is.electron">
-                  requires server with cors enabled only for search function.
-                </p>
-                <p v-else>requires server with cors enabled.</p>
-                <q-select
-                  v-model="store.currentNodeConfig.protocol"
-                  filled
-                  :options="protocolOptions"
-                  label="Protocol"
-                />
-                <q-input v-model="store.currentNodeConfig.host" filled type="text" label="host" />
-                <q-input
-                  v-model.number="store.currentNodeConfig.port"
-                  filled
-                  type="number"
-                  label="port"
-                />
+  <div class="login">
+    <section class="login__intro">
+      <div class="brand row items-center no-wrap">
+        <span class="brand__mark" aria-hidden="true">T</span>
+        <span class="brand__name">Typesense <mark>Dashboard</mark></span>
+      </div>
+      <h1 class="login__title">Connect to your <mark>search</mark> server</h1>
+      <p class="login__lead">
+        Manage collections, schemas, synonyms, keys and server settings for a Typesense server you
+        run or host.
+      </p>
+      <p v-if="!$q.platform.is.electron" class="login__note">
+        The server must allow this page's origin, <code>{{ origin }}</code
+        >, through CORS (<code>--enable-cors</code>).
+      </p>
+    </section>
+
+    <section class="login__panel">
+      <q-card flat bordered class="login__card">
+        <q-form @submit="login">
+          <q-card-section class="q-gutter-md">
+            <div class="ts-section-title">Server</div>
+            <div class="row no-wrap" style="gap: 8px">
+              <q-select
+                v-model="store.currentNodeConfig.protocol"
+                outlined
+                :options="protocolOptions"
+                label="Protocol"
+                style="width: 110px"
+              />
+              <q-input
+                v-model="store.currentNodeConfig.host"
+                class="col"
+                outlined
+                label="Host"
+                placeholder="localhost"
+                autocomplete="off"
+              />
+              <q-input
+                v-model.number="store.currentNodeConfig.port"
+                outlined
+                type="number"
+                label="Port"
+                style="width: 110px"
+              />
+            </div>
+            <q-input
+              v-model="apiKey"
+              outlined
+              type="password"
+              label="API key"
+              autocomplete="current-password"
+              hint="An admin key shows every page. A scoped key shows what it's allowed to see."
+            />
+            <q-expansion-item
+              v-model="showAdvancedSettings"
+              dense
+              switch-toggle-side
+              header-class="q-px-none ts-muted"
+              label="Advanced"
+            >
+              <div class="q-gutter-md q-pt-sm">
                 <q-input
                   v-model="store.currentNodeConfig.path"
-                  filled
-                  type="text"
-                  label="path"
-                  hint="optional: leave blank or start with / and end without /"
+                  outlined
+                  label="Path"
+                  placeholder="/typesense"
+                  hint="Only when Typesense is behind a proxy under a sub-path."
                 />
-                <q-expansion-item
-                  v-model="showAdvancedSettings"
-                  dense
-                  dense-toggle
-                  label="Advanced settings"
-                  class="text-left"
-                >
-                  <q-input
-                    v-model.number="connectionTimeoutSeconds"
-                    class="q-mt-sm"
-                    filled
-                    type="number"
-                    label="Connection Timeout (seconds)"
-                    hint="optional: leave blank to use default timeout"
-                    clearable
-                  />
-                </q-expansion-item>
-                <div class="text-left">
-                  <q-toggle
-                    v-if="$q.platform.is.electron && store.currentNodeConfig.protocol === 'https'"
-                    v-model="store.currentNodeConfig.tls"
-                    label="Check TLS"
-                  />
-                </div>
-              </q-form>
-            </q-card-section>
-            <q-card-section v-if="store.error">
-              <p class="text-red">{{ store.error }}</p>
-            </q-card-section>
-            <q-card-actions class="q-px-md row">
-              <q-btn
-                unelevated
-                color="primary"
-                size="lg"
-                style="flex: 1"
-                label="Login"
-                @click="login()"
-              />
-              <q-btn color="primary" size="lg" icon="sym_s_history">
-                <q-menu>
-                  <server-history></server-history>
-                </q-menu>
-              </q-btn>
-            </q-card-actions>
-          </q-card>
-        </div>
-      </div>
-    </div>
+                <q-input
+                  v-model.number="connectionTimeoutSeconds"
+                  outlined
+                  type="number"
+                  label="Connection timeout"
+                  suffix="seconds"
+                  clearable
+                  hint="Leave empty for the default."
+                />
+                <q-toggle
+                  v-if="$q.platform.is.electron && store.currentNodeConfig.protocol === 'https'"
+                  v-model="store.currentNodeConfig.tls"
+                  label="Verify the TLS certificate"
+                />
+              </div>
+            </q-expansion-item>
+            <div v-if="store.error" class="login__error" role="alert">
+              <q-icon name="sym_s_error" size="18px" />
+              <span>Couldn't connect: {{ store.error }}</span>
+            </div>
+            <q-btn
+              unelevated
+              no-caps
+              color="primary"
+              size="md"
+              class="full-width"
+              type="submit"
+              label="Connect"
+            />
+          </q-card-section>
+        </q-form>
+        <template v-if="store.loginHistoryParsed.length">
+          <q-separator />
+          <div class="login__recent">
+            <server-history />
+          </div>
+        </template>
+      </q-card>
+    </section>
   </div>
 </template>
 
@@ -93,6 +118,7 @@ import { onMounted, ref } from 'vue';
 const store = useNodeStore();
 
 const protocolOptions = ['http', 'https'];
+const origin = window.location.origin;
 const apiKey = ref('');
 const showAdvancedSettings = ref(false);
 const connectionTimeoutSeconds = ref<number | null>(
@@ -114,3 +140,107 @@ function login() {
   void store.login(payload);
 }
 </script>
+
+<style scoped lang="scss">
+.login {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--ts-paper);
+  @media (max-width: 899px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.login__intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px clamp(24px, 6vw, 96px);
+}
+
+.brand {
+  gap: 10px;
+  margin-bottom: 48px;
+}
+
+.brand__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--ts-ink);
+  color: var(--ts-paper);
+  font-family: var(--ts-font-display);
+  font-weight: 700;
+  box-shadow: inset 0 -8px 0 var(--ts-mark);
+}
+
+.brand__name {
+  font-family: var(--ts-font-display);
+  font-weight: 650;
+  font-size: 1.05rem;
+}
+
+.login__title {
+  margin: 0;
+  max-width: 14ch;
+  font-family: var(--ts-font-display);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 4.4vw, 3.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  color: var(--ts-ink);
+}
+
+.login__lead {
+  margin: 20px 0 0;
+  max-width: 44ch;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--ts-ink-2);
+}
+
+.login__note {
+  margin: 16px 0 0;
+  max-width: 52ch;
+  font-size: 0.85rem;
+  color: var(--ts-ink-3);
+}
+
+.login__panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  background: var(--ts-sheet-2);
+  border-left: 1px solid var(--ts-rule);
+  @media (max-width: 899px) {
+    border-left: 0;
+    border-top: 1px solid var(--ts-rule);
+  }
+}
+
+.login__card {
+  width: min(440px, 100%);
+}
+
+.login__error {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--ts-danger-soft);
+  color: var(--ts-ink);
+  font-size: 0.85rem;
+  .q-icon {
+    color: var(--q-negative);
+  }
+}
+
+.login__recent {
+  max-height: 260px;
+  overflow-y: auto;
+}
+</style>

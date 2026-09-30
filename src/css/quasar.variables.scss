@@ -1,75 +1,28 @@
-// Quasar SCSS (& Sass) Variables
-// --------------------------------------------------
-// To customize the look and feel of this app, you can override
-// the Sass/SCSS variables found in Quasar's source Sass/SCSS files.
+// Quasar theme variables. The full token system (surfaces, text, rules, the
+// highlighter) lives in app.scss as CSS custom properties so it can switch with
+// dark mode; these are the brand colors Quasar compiles into its components.
 
-// Check documentation for full list of Quasar variables
+// Teal ink: actions, links, focus. Brightened for dark mode in app.scss.
+$primary: #0f766e;
+// Highlighter: the search-hit marker, used for wayfinding.
+$secondary: #ffd84d;
+// Ink: body text and strong neutrals.
+$accent: #14191b;
 
-// Your own variables (that are declared here) and Quasar's own
-// ones will be available out of the box in your .vue/.scss/.sass files
+$dark: #151c1f;
+$dark-page: #0e1315;
 
-// It's highly recommended to change the default colors
-// to match your app's branding.
-// Tip: Use the "Theme Builder" on Quasar's documentation website.
+$positive: #2e9d5b;
+$negative: #c8324b;
+$info: #0f766e;
+$warning: #b7791f;
 
-$primary: #1f2937;
-$secondary: #e69e3b;
-$accent: #31316a;
+$typography-font-family:
+  'IBM Plex Sans',
+  system-ui,
+  -apple-system,
+  'Segoe UI',
+  sans-serif;
 
-$dark: #111827;
-
-$positive: #10b981;
-$negative: #e11d48;
-$info: #2361ce;
-$warning: #fba918;
-
-.body--light {
-  .bg-surface {
-    background-color: #eeeeee !important;
-    .q-field__control {
-      background-color: #ffffff !important;
-    }
-  }
-}
-
-.body--dark {
-  .q-radio__inner,
-  .q-tab--active .q-tab__label,
-  .q-field--highlighted .q-field__label {
-    color: #fff !important;
-  }
-
-  .ais-Breadcrumb,
-  .ais-ClearRefinements,
-  .ais-CurrentRefinements,
-  .ais-GeoSearch,
-  .ais-FrequentlyBoughtTogether,
-  .ais-HierarchicalMenu,
-  .ais-Hits,
-  .ais-Results,
-  .ais-HitsPerPage,
-  .ais-ResultsPerPage,
-  .ais-InfiniteHits,
-  .ais-InfiniteResults,
-  .ais-LookingSimilar,
-  .ais-Menu,
-  .ais-MenuSelect,
-  .ais-NumericMenu,
-  .ais-NumericSelector,
-  .ais-Pagination,
-  .ais-Panel,
-  .ais-PoweredBy,
-  .ais-RangeInput,
-  .ais-RangeSlider,
-  .ais-RatingMenu,
-  .ais-RefinementList,
-  .ais-RelatedProducts,
-  .ais-SearchBox,
-  .ais-RelevantSort,
-  .ais-SortBy,
-  .ais-Stats,
-  .ais-TrendingItems,
-  .ais-ToggleRefinement {
-    color: #ffffffab !important;
-  }
-}
+$generic-border-radius: 8px;
+$button-border-radius: 8px;

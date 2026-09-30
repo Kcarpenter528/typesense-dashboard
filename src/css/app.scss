@@ -1,8 +1,562 @@
-// app global css in SCSS form
+// Typesense Dashboard design system.
+//
+// "Ink and highlighter": teal ink for actions, a search-result highlighter for
+// wayfinding (the current page, matched text, the key word of a title), on cool
+// paper surfaces. Every color below is a token; components read the tokens, never
+// raw hex values, so light and dark mode stay in step.
+
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource-variable/schibsted-grotesk/index.css';
+
+// ---------------------------------------------------------------------------
+// Tokens
+// ---------------------------------------------------------------------------
+
+:root,
+.body--light {
+  --ts-paper: #f4f6f5; // app canvas
+  --ts-sheet: #ffffff; // cards, panels, header
+  --ts-sheet-2: #f9faf9; // inset areas inside a sheet
+  --ts-ink: #14191b; // primary text
+  --ts-ink-2: #4a5557; // secondary text
+  --ts-ink-3: #7c8788; // captions, placeholders
+  --ts-rule: #dce2e0; // hairlines
+  --ts-rule-strong: #c4ccca;
+  --ts-hover: rgba(20, 25, 27, 0.045);
+  --ts-primary: #0f766e;
+  --ts-primary-soft: rgba(15, 118, 110, 0.09);
+  --ts-on-primary: #ffffff;
+  --ts-mark: #ffe37a; // highlighter
+  --ts-mark-ink: #14191b;
+  --ts-danger-soft: rgba(200, 50, 75, 0.08);
+  --ts-warning-soft: rgba(183, 121, 31, 0.1);
+  --ts-shadow: 0 1px 2px rgba(20, 25, 27, 0.04), 0 8px 24px rgba(20, 25, 27, 0.06);
+
+  --ts-font-display: 'Schibsted Grotesk Variable', 'IBM Plex Sans', system-ui, sans-serif;
+  --ts-font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+}
+
+.body--dark {
+  --ts-paper: #0e1315;
+  --ts-sheet: #151c1f;
+  --ts-sheet-2: #11181a;
+  --ts-ink: #e7eceb;
+  --ts-ink-2: #a6b1b1;
+  --ts-ink-3: #75817f;
+  --ts-rule: #243033;
+  --ts-rule-strong: #34434a;
+  --ts-hover: rgba(231, 236, 235, 0.06);
+  --ts-primary: #3cc2b4;
+  --ts-primary-soft: rgba(60, 194, 180, 0.12);
+  --ts-on-primary: #06201d;
+  --ts-mark: rgba(255, 216, 77, 0.24);
+  --ts-mark-ink: #ffeaa8;
+  --ts-danger-soft: rgba(232, 90, 112, 0.12);
+  --ts-warning-soft: rgba(230, 170, 60, 0.12);
+  --ts-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  // Quasar reads its brand colors from these; teal ink is too dark on a dark canvas.
+  --q-primary: #3cc2b4;
+  --q-info: #3cc2b4;
+  --q-negative: #ef6b82;
+  --q-positive: #4cc27f;
+  --q-warning: #e6aa3c;
+  --q-dark: #151c1f;
+  --q-dark-page: #0e1315;
+}
+
+// ---------------------------------------------------------------------------
+// Base
+// ---------------------------------------------------------------------------
+
+body {
+  background: var(--ts-paper);
+  color: var(--ts-ink);
+  font-feature-settings: 'ss02';
+  -webkit-font-smoothing: antialiased;
+}
+
+.q-layout,
+.q-page-container {
+  background: var(--ts-paper);
+}
+
+a {
+  color: var(--ts-primary);
+}
+
+code,
+.text-mono {
+  font-family: var(--ts-font-mono);
+  font-size: 0.92em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ts-primary);
+  outline-offset: 2px;
+}
+
 .material-symbols-sharp {
-  font-weight: 100;
+  font-weight: 300;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Signature: the highlighter
+// ---------------------------------------------------------------------------
+
+// A marker stroke behind text, the way search results highlight a hit. It sits a
+// little below the cap height and leaves the ascenders clear, like a real pen.
+.ts-mark,
+mark {
+  color: var(--ts-mark-ink);
+  background: linear-gradient(
+    to bottom,
+    transparent 0 32%,
+    var(--ts-mark) 32% 92%,
+    transparent 92%
+  );
+  padding: 0 0.15em;
+  margin: 0 -0.15em;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+// ---------------------------------------------------------------------------
+// Type
+// ---------------------------------------------------------------------------
+
+.ts-display {
+  font-family: var(--ts-font-display);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.ts-title {
+  font-family: var(--ts-font-display);
+  font-weight: 650;
+  font-size: 1.75rem;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.ts-section-title {
+  font-family: var(--ts-font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+// Small label above a group of related content.
+.ts-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--ts-ink-3);
+  letter-spacing: 0.01em;
+}
+
+.ts-muted {
+  color: var(--ts-ink-2);
+}
+
+.ts-faint {
+  color: var(--ts-ink-3);
+}
+
+// ---------------------------------------------------------------------------
+// Surfaces
+// ---------------------------------------------------------------------------
+
+.ts-page {
+  padding: 28px 32px 48px;
+  max-width: 1400px;
+  margin: 0 auto;
+  @media (max-width: 599px) {
+    padding: 16px 16px 32px;
+  }
+}
+
+.ts-sheet {
+  background: var(--ts-sheet);
+  border: 1px solid var(--ts-rule);
+  border-radius: 12px;
+}
+
+// Quasar surfaces adopt the paper-and-sheet system.
+.q-card {
+  background: var(--ts-sheet);
+  color: var(--ts-ink);
+}
+
+.q-card--bordered,
+.q-table--bordered,
+.q-table__card.q-table--bordered {
+  border-color: var(--ts-rule);
+}
+
+.q-card--flat.q-card--bordered,
+.q-table__card {
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.q-separator {
+  background: var(--ts-rule);
+}
+
+.q-menu,
+.q-dialog .q-card {
+  box-shadow: var(--ts-shadow);
+  border: 1px solid var(--ts-rule);
+}
+
+.q-dialog .q-card {
+  border-radius: 14px;
+}
+
+// Legacy helper used by tab panels behind the schema editor.
+.bg-surface {
+  background: var(--ts-sheet-2) !important;
+}
+
+// ---------------------------------------------------------------------------
+// Controls
+// ---------------------------------------------------------------------------
+
+.q-btn {
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.q-btn--rectangle,
+.q-btn--standard {
+  border-radius: 8px;
+}
+
+// Filled primary buttons: dark ink text on the bright dark-mode teal.
+.body--dark .q-btn.bg-primary,
+.body--dark .bg-primary.text-white {
+  color: var(--ts-on-primary) !important;
+}
+
+.q-field--outlined .q-field__control {
+  border-radius: 8px;
+  &:before {
+    border-color: var(--ts-rule-strong);
+  }
+}
+
+.q-field--filled .q-field__control {
+  border-radius: 8px 8px 0 0;
+  background: var(--ts-sheet-2);
+}
+
+.q-field__native,
+.q-field__input {
+  color: var(--ts-ink);
+}
+
+.q-field--dark .q-field__control:before {
+  border-color: var(--ts-rule-strong);
+}
+
+.q-field--highlighted .q-field__label,
+.body--dark .q-field--highlighted .q-field__label {
+  color: var(--ts-primary);
+}
+
+.q-tab {
+  text-transform: none;
+  font-weight: 500;
+}
+
+.body--dark .q-tab--active .q-tab__label {
+  color: var(--ts-ink);
+}
+
+.body--dark .q-radio__inner {
+  color: var(--ts-ink-2);
+}
+
+// Tables: quiet header, hairline rows, hover wash.
+.q-table {
+  th {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--ts-ink-3);
+  }
+  tbody td {
+    font-size: 0.875rem;
+    // Numbers in columns line up; standalone figures keep proportional digits.
+    font-variant-numeric: tabular-nums;
+  }
+  thead tr,
+  tbody td {
+    border-color: var(--ts-rule);
+  }
+  tbody tr:hover > td {
+    background: var(--ts-hover);
+  }
+}
+
+.q-table__card {
+  background: var(--ts-sheet);
+  color: var(--ts-ink);
+}
+
+.q-banner {
+  border-radius: 10px;
+}
+
+.q-notification {
+  border-radius: 10px;
+}
+
+// ---------------------------------------------------------------------------
+// Code and editors
+// ---------------------------------------------------------------------------
+
+pre {
+  font-family: var(--ts-font-mono);
+}
+
+// Pages under the collection header don't need to fill the viewport on their own.
+.collection-header + .q-page {
+  min-height: 0 !important;
+}
+
+// ---------------------------------------------------------------------------
+// List pages
+// ---------------------------------------------------------------------------
+
+.ts-table {
+  .q-table__top {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--ts-rule);
+  }
+  .q-table__bottom {
+    border-top-color: var(--ts-rule);
+    color: var(--ts-ink-3);
+  }
+  td {
+    height: 52px;
+  }
+}
+
+.ts-filter {
+  width: min(320px, 100%);
+}
+
+.ts-link {
+  color: var(--ts-ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--ts-rule-strong);
+  &:hover {
+    color: var(--ts-primary);
+    border-bottom-color: currentColor;
+  }
+}
+
+.ts-danger-hover:hover {
+  color: var(--q-negative);
+}
+
+// ---------------------------------------------------------------------------
+// InstantSearch widgets, restyled with the tokens
+// ---------------------------------------------------------------------------
+
+// Hits highlighted by the search engine get the same highlighter as the rest of the app.
+.ais-Highlight-highlighted,
+.ais-Snippet-highlighted {
+  color: var(--ts-mark-ink);
+  background: linear-gradient(
+    to bottom,
+    transparent 0 30%,
+    var(--ts-mark) 30% 94%,
+    transparent 94%
+  );
+  // The InstantSearch base theme paints its own background under highlights.
+  background-color: transparent !important;
+  font-style: normal;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.ais-SortBy-select,
+.ais-HitsPerPage-select,
+.ais-MenuSelect-select {
+  width: 100%;
+  height: 34px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 8px;
+  // The InstantSearch base theme forces a white background.
+  background-color: var(--ts-sheet) !important;
+  color: var(--ts-ink);
+  font: inherit;
+  font-size: 0.85rem;
+  box-shadow: none;
+}
+
+.ais-InstantSearch option {
+  background-color: var(--ts-sheet);
+  color: var(--ts-ink);
+}
+
+.ais-RefinementList-list {
+  display: grid;
+  gap: 2px;
+}
+
+.ais-RefinementList-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--ts-ink);
+  &:hover {
+    background: var(--ts-hover);
+  }
+}
+
+.ais-RefinementList-checkbox {
+  accent-color: var(--ts-primary);
+  margin: 0;
 }
 
 .ais-RefinementList-labelText {
-  padding: 0 5px;
+  flex: 1;
+  padding: 0;
+}
+
+.ais-RefinementList-count {
+  font-family: var(--ts-font-mono);
+  font-size: 0.72rem;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ts-sheet-2) !important;
+  border: 1px solid var(--ts-rule);
+  color: var(--ts-ink-3);
+}
+
+.ais-SearchBox-form {
+  margin-bottom: 8px;
+}
+
+.ais-SearchBox-input,
+.ais-RangeInput-input {
+  height: 32px;
+  border: 1px solid var(--ts-rule-strong);
+  border-radius: 8px;
+  background: var(--ts-sheet);
+  color: var(--ts-ink);
+  box-shadow: none;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.ais-RangeInput-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ais-RangeInput-submit {
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ts-primary);
+  color: var(--ts-on-primary);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.ais-CurrentRefinements-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ais-CurrentRefinements-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--ts-rule);
+  border-radius: 999px;
+  background: var(--ts-sheet);
+  font-size: 0.8rem;
+}
+
+.ais-CurrentRefinements-label {
+  color: var(--ts-ink-3);
+}
+
+.ais-CurrentRefinements-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ts-ink);
+}
+
+.ais-CurrentRefinements-delete {
+  border: 0;
+  background: transparent;
+  color: var(--ts-ink-3);
+  cursor: pointer;
+}
+
+.ais-Pagination-list {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.ais-Pagination-link {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--ts-rule);
+  border-radius: 8px;
+  background: var(--ts-sheet);
+  color: var(--ts-ink-2);
+  text-decoration: none;
+  box-shadow: none;
+  &:hover {
+    border-color: var(--ts-rule-strong);
+    color: var(--ts-ink);
+  }
+}
+
+.ais-Pagination-item--selected .ais-Pagination-link {
+  background: var(--ts-ink);
+  border-color: var(--ts-ink);
+  color: var(--ts-paper);
+}
+
+.ais-Pagination-item--disabled .ais-Pagination-link {
+  opacity: 0.4;
 }

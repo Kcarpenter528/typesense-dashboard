@@ -65,10 +65,15 @@
               :aria-label="setting.label"
             />
             <q-btn
-              unelevated
               no-caps
+              :unelevated="isDirty(setting)"
+              :flat="!isDirty(setting)"
               :color="
-                setting.danger && drafts[setting.key] !== setting.default ? 'negative' : 'primary'
+                isDirty(setting)
+                  ? setting.danger && drafts[setting.key] !== setting.default
+                    ? 'negative'
+                    : 'primary'
+                  : undefined
               "
               label="Apply"
               :loading="saving[setting.key]"
@@ -106,6 +111,11 @@ const saving = reactive<Record<string, boolean>>({});
 const errors = computed<Record<string, string | null>>(() =>
   Object.fromEntries(RUNTIME_SETTINGS.map((s) => [s.key, validateRuntimeValue(s, drafts[s.key])])),
 );
+
+/** Whether the field differs from the value last applied (or the default). */
+function isDirty(setting: RuntimeSetting) {
+  return drafts[setting.key] !== (applied.value[setting.key]?.value ?? setting.default);
+}
 
 function setNumberDraft(key: string, value: string | number | null) {
   // An empty field becomes NaN so validation reports it instead of silently sending 0.

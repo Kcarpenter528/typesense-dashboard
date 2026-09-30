@@ -572,7 +572,9 @@ export const useNodeStore = defineStore('node', {
           ?.getSynonyms(collectionName)
           ?.then((response: { synonyms: SynonymSchema[] }) => {
             this.setData({ synonyms: response.synonyms });
-          });
+          })
+          // v30 removed per-collection synonyms; this runs before feature detection finishes.
+          .catch(() => this.setData({ synonyms: [] }));
       }
     },
     getOverrides(collectionName: string) {
@@ -596,7 +598,9 @@ export const useNodeStore = defineStore('node', {
           ?.getOverrides(collectionName)
           ?.then((response: { overrides: OverrideSchema[] }) => {
             this.setData({ overrides: response.overrides });
-          });
+          })
+          // v30 removed per-collection overrides; this runs before feature detection finishes.
+          .catch(() => this.setData({ overrides: [] }));
       }
     },
     login(loginData: NodeLoginPayloadInterface) {
