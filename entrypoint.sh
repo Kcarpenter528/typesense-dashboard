@@ -6,4 +6,4 @@ if [ -n "$TYPESENSE_DASHBOARD_CONFIG" ]; then
   echo "Generated config.json from TYPESENSE_DASHBOARD_CONFIG environment variable"
 fi
 
-exec caddy file-server
+exec nginx -g "daemon off;"

@@ -16,9 +16,10 @@ COPY . .
 RUN npm run postinstall
 RUN npm run build
 
-FROM caddy:2-alpine
+FROM nginx:alpine-slim
 ARG PUBLIC_PATH
 WORKDIR /srv
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 COPY --from=builder /app/dist/spa/ .${PUBLIC_PATH}
