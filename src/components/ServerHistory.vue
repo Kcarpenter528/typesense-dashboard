@@ -1,21 +1,16 @@
 <template>
   <q-list style="min-width: 100px">
     <q-item v-if="props.showLogout" v-close-popup clickable @click="store.logout">
-      <q-item-section>Logout</q-item-section>
+      <q-item-section>Disconnect</q-item-section>
       <q-item-section avatar>
         <q-icon name="sym_s_logout" />
       </q-item-section>
     </q-item>
     <q-separator v-if="props.showLogout" />
-    <q-item v-close-popup clickable @click="store.clearHistory">
-      <q-item-section>Clear history</q-item-section>
-      <q-item-section avatar>
-        <q-icon name="sym_s_delete" />
-      </q-item-section>
-    </q-item>
-    <q-separator />
-    <q-item-label v-if="store.loginHistoryParsed.length === 0" header>No History</q-item-label>
-    <q-item-label v-if="store.loginHistoryParsed.length > 0" header>Server History</q-item-label>
+    <q-item-label v-if="store.loginHistoryParsed.length === 0" header
+      >No recent servers</q-item-label
+    >
+    <q-item-label v-if="store.loginHistoryParsed.length > 0" header>Recent servers</q-item-label>
     <q-item
       v-for="(history, index) in store.loginHistoryParsed"
       :key="index"
@@ -27,7 +22,9 @@
       <q-item-section>
         <div class="row items-center no-wrap">
           <div class="col">
-            <div>{{ history.node.protocol }}://{{ history.node.host }}:{{ history.node.port }}</div>
+            <div class="text-mono">
+              {{ history.node.protocol }}://{{ history.node.host }}:{{ history.node.port }}
+            </div>
             <div v-if="history.apiKey && hasMultipleKeys(history)" class="text-caption text-grey-7">
               key: {{ apiKeyPrefix(history) }}…
             </div>
@@ -46,10 +43,20 @@
       </q-item-section>
     </q-item>
 
+    <template v-if="store.loginHistoryParsed.length">
+      <q-separator />
+      <q-item v-close-popup clickable dense class="ts-muted" @click="store.clearHistory">
+        <q-item-section>Clear recent servers</q-item-section>
+        <q-item-section avatar>
+          <q-icon name="sym_s_delete" size="18px" />
+        </q-item-section>
+      </q-item>
+    </template>
+
     <q-dialog v-model="tagDialog.visible">
       <q-card style="min-width: 320px">
         <q-card-section>
-          <div class="text-h6">Set Cluster Tag</div>
+          <div class="ts-section-title">Set cluster tag</div>
           <div class="text-subtitle2 text-grey-7">Group servers by giving them the same tag.</div>
         </q-card-section>
         <q-card-section>

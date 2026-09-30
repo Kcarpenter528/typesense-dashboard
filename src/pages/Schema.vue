@@ -1,15 +1,6 @@
 <template>
-  <q-page padding class="column">
-    <div class="row justify-between q-mb-md">
-      <div class="text-h5">
-        <q-icon size="md" name="sym_s_data_object" /> Schema for
-        {{ store.currentCollection?.name }}
-      </div>
-      <q-btn unelevated color="negative" @click="drop(store.currentCollection?.name || '')"
-        >Drop Collection</q-btn
-      >
-    </div>
-    <collection-ui :initial-schema="schema" primary-action-label="Update Schema" @submit="update" />
+  <q-page class="ts-page">
+    <collection-ui :initial-schema="schema" primary-action-label="Save schema" @submit="update" />
   </q-page>
 </template>
 
@@ -63,17 +54,6 @@ const schema = computed<CollectionSchema | CollectionCreateSchema>(() => {
     enable_nested_fields: false,
   };
 });
-
-function drop(name: string) {
-  $q.dialog({
-    title: 'Confirm',
-    message: `Drop ${name} and all documents?`,
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    void store.dropCollection(name);
-  });
-}
 
 function update(editedSchema: CollectionCreateSchema) {
   const collection = store.currentCollection;

@@ -1,79 +1,103 @@
 <template>
-  <div class="row">
-    <div class="col-9">
-      <monaco-editor
-        v-model="searchParametersJson"
-        style="height: 30vh; min-height: 200px"
-      ></monaco-editor>
-    </div>
-    <div class="col-3">
-      <q-scroll-area style="height: 100%">
-        <q-list bordered separator dense>
-          <q-item-label header>History</q-item-label>
-          <q-item
-            v-for="h in history"
-            :key="h"
-            v-ripple
-            clickable
-            :title="h"
-            @click="searchParametersJson = h"
+  <div class="json-search">
+    <section class="ts-sheet editor-card">
+      <div class="editor-card__bar row items-center justify-between">
+        <span class="ts-eyebrow">Search parameters</span>
+        <div class="row items-center q-gutter-x-xs">
+          <q-btn
+            flat
+            dense
+            no-caps
+            size="sm"
+            label="Reset to this collection"
+            @click="resetParameters"
+          />
+          <q-btn
+            unelevated
+            no-caps
+            color="primary"
+            icon="sym_s_play_arrow"
+            label="Run search"
+            :disable="!!jsonError"
+            @click="search()"
           >
-            <q-item-section>
-              {{ h.slice(0, 60) }}
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-scroll-area>
+            <q-tooltip>Ctrl + Enter</q-tooltip>
+          </q-btn>
+        </div>
+      </div>
+      <div
+        class="editor"
+        @keydown.ctrl.enter.prevent="search()"
+        @keydown.meta.enter.prevent="search()"
+      >
+        <monaco-editor v-model="searchParametersJson" />
+      </div>
+      <div v-if="jsonError" class="json-error">{{ jsonError }}</div>
+    </section>
+
+    <aside class="ts-sheet history">
+      <div class="ts-eyebrow history__title">Recent searches</div>
+      <div v-if="!history.length" class="ts-faint text-caption q-pa-sm">
+        Searches you run appear here.
+      </div>
+      <button
+        v-for="h in history"
+        :key="h"
+        type="button"
+        class="history__item text-mono"
+        :title="h"
+        @click="searchParametersJson = h"
+      >
+        {{ summarize(h) }}
+      </button>
+    </aside>
+  </div>
+
+  <div v-if="results" class="results-bar row items-center justify-between q-mt-md">
+    <span class="ts-muted">
+      <template v-if="results.hits">
+        <strong>{{ (results.found ?? 0).toLocaleString() }}</strong> found ·
+        {{ results.search_time_ms }} ms
+      </template>
+      <template v-else>Raw response</template>
+    </span>
+    <div class="row q-gutter-x-xs">
+      <q-btn
+        flat
+        dense
+        no-caps
+        size="sm"
+        icon="sym_s_download"
+        label="Export hits"
+        :disable="!results.hits"
+        @click="exportHits()"
+      />
+      <q-btn
+        flat
+        dense
+        no-caps
+        size="sm"
+        icon="sym_s_data_object"
+        label="Export full response"
+        @click="exportResults()"
+      />
     </div>
   </div>
-  <q-banner v-if="jsonError" inline-actions class="text-white bg-red">
-    Invalid Format: {{ jsonError }}
-  </q-banner>
-  <div class="q-mt-md">
-    <q-btn
-      size="md"
-      padding="sm lg"
-      unelevated
-      color="primary"
-      :disable="!!jsonError"
-      @click="search()"
-      >Run Query</q-btn
-    >
-    <q-btn
-      size="md"
-      padding="sm lg"
-      unelevated
-      color="accent"
-      class="q-ml-sm"
-      :disable="!results || !results.hits"
-      @click="exportHits()"
-      >Export Hits</q-btn
-    >
-    <q-btn
-      size="md"
-      padding="sm lg"
-      unelevated
-      color="accent"
-      class="q-ml-sm"
-      :disable="!results"
-      @click="exportResults()"
-      >Export Raw Results</q-btn
-    >
-  </div>
-  <div v-if="hits" class="ais-Hits q-mt-md">
+  <div v-if="hits.length" class="ais-Hits q-mt-sm">
     <ol class="ais-Hits-list">
       <li v-for="item in hits" :key="item.id" class="ais-Hits-item">
         <search-result-item :item="item" />
       </li>
     </ol>
   </div>
-  <div v-if="results && results.hits && results.hits.length === 0" class="text-h5 q-mt-md">
-    No match found
+  <div v-if="results && results.hits && results.hits.length === 0" class="ts-sheet q-mt-sm">
+    <empty-state
+      icon="sym_s_search_off"
+      title="No documents match"
+      body="Try a broader q, or remove a filter_by condition."
+    />
   </div>
-  <pre v-if="results && !results.hits">
-          {{ resultsJson }}
-        </pre
-  >
+  <pre v-if="results && !results.hits" class="ts-sheet raw q-mt-sm">{{ resultsJson }}</pre>
 </template>
 
 <script setup lang="ts">
@@ -82,21 +106,45 @@ import { LocalStorage } from 'quasar';
 import { useNodeStore } from '@/stores/node';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import SearchResultItem from '@/components/search/SearchResultItem.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
 import type { SearchParams } from 'typesense/lib/Typesense/Documents';
 
 const store = useNodeStore();
 const STORAGE_KEY_SEARCH_HISTORY = 'typesense-search-history';
 
 const history = ref<string[]>([]);
-const searchParameters = ref<SearchParams<any>>({
-  q: 'stark',
-  query_by: 'company_name',
-  filter_by: 'num_employees:>100',
-  sort_by: 'num_employees:desc',
-  page: 1,
-  per_page: 10,
-  exhaustive_search: true,
-});
+const searchParameters = ref<SearchParams<any>>({ q: '*', per_page: 10 });
+
+/** Starting parameters that work on the open collection: its searchable text fields. */
+function defaultParameters(): SearchParams<any> {
+  const fields = store.currentCollection?.fields ?? [];
+  const queryBy = fields
+    .filter(
+      (f) => f.index !== false && ['string', 'string[]'].includes(f.type) && !f.name.includes('*'),
+    )
+    .map((f) => f.name)
+    .join(',');
+  return { q: '*', ...(queryBy ? { query_by: queryBy } : {}), page: 1, per_page: 10 };
+}
+
+function resetParameters() {
+  searchParameters.value = defaultParameters();
+  jsonError.value = null;
+}
+
+/** One-line summary of a saved search for the history list. */
+function summarize(json: string) {
+  try {
+    const p = JSON.parse(json) as Record<string, unknown>;
+    const text = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v) : '');
+    const parts = [`q=${text(p.q)}`];
+    if (p.filter_by) parts.push(`filter ${text(p.filter_by)}`);
+    if (p.sort_by) parts.push(`sort ${text(p.sort_by)}`);
+    return parts.join(' · ');
+  } catch {
+    return json.slice(0, 60);
+  }
+}
 const jsonError = ref<string | null>(null);
 const results = ref<any>(null);
 
@@ -109,7 +157,7 @@ const searchParametersJson = computed({
       searchParameters.value = JSON.parse(json);
       jsonError.value = null;
     } catch (e) {
-      jsonError.value = (e as Error).message;
+      jsonError.value = `This isn't valid JSON yet: ${(e as Error).message}`;
     }
   },
 });
@@ -232,5 +280,89 @@ const loadHistory = () => {
     [];
 };
 
-watch(currentCollection, loadHistory, { immediate: true });
+watch(
+  () => currentCollection.value?.name,
+  () => {
+    loadHistory();
+    resetParameters();
+    results.value = null;
+  },
+  { immediate: true },
+);
 </script>
+
+<style scoped lang="scss">
+.json-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
+  @media (max-width: 1023px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editor-card {
+  overflow: hidden;
+}
+
+.editor-card__bar {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ts-rule);
+}
+
+.editor {
+  height: 300px;
+  display: flex;
+}
+
+.json-error {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  color: var(--q-negative);
+  background: var(--ts-danger-soft);
+}
+
+.history {
+  padding: 8px;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.history__title {
+  padding: 4px 6px 8px;
+}
+
+.history__item {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ts-ink-2);
+  font-size: 0.78rem;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  &:hover {
+    background: var(--ts-hover);
+    color: var(--ts-ink);
+  }
+}
+
+.results-bar {
+  font-size: 0.85rem;
+  strong {
+    color: var(--ts-ink);
+  }
+}
+
+.raw {
+  padding: 16px;
+  font-size: 0.8rem;
+  overflow: auto;
+  max-height: 60vh;
+}
+</style>

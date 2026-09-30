@@ -154,7 +154,7 @@ async function fetchAll() {
     const mData: any = hasDataField(m) ? m.data : (m ?? {});
     metrics.value = mData || {};
     debugInfo.value = d || {};
-    const sData: any = hasDataField(s) ? (s).data : (s ?? {});
+    const sData: any = hasDataField(s) ? s.data : (s ?? {});
     stats.value = sData || {};
     health.value = h.data || null;
     lastUpdated.value = Date.now();

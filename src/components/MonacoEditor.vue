@@ -7,6 +7,43 @@
 <script setup lang="ts">
 import * as monaco from 'monaco-editor';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { Dark } from 'quasar';
+
+// Editor themes that match the app's paper-and-ink surfaces in both modes.
+monaco.editor.defineTheme('ts-light', {
+  base: 'vs',
+  inherit: true,
+  rules: [
+    { token: 'string.key.json', foreground: '0f766e' },
+    { token: 'string.value.json', foreground: '8a4b0f' },
+    { token: 'number', foreground: '3346a8' },
+    { token: 'keyword.json', foreground: '9b2c6b' },
+  ],
+  colors: {
+    'editor.background': '#ffffff',
+    'editorGutter.background': '#f9faf9',
+    'editorLineNumber.foreground': '#a7b0af',
+    'editor.lineHighlightBackground': '#f4f6f5',
+    'editor.selectionBackground': '#ffe37a88',
+  },
+});
+monaco.editor.defineTheme('ts-dark', {
+  base: 'vs-dark',
+  inherit: true,
+  rules: [
+    { token: 'string.key.json', foreground: '5fd4c6' },
+    { token: 'string.value.json', foreground: 'e8c07a' },
+    { token: 'number', foreground: '9fb4ff' },
+    { token: 'keyword.json', foreground: 'f09ac8' },
+  ],
+  colors: {
+    'editor.background': '#151c1f',
+    'editorGutter.background': '#11181a',
+    'editorLineNumber.foreground': '#4d5b5e',
+    'editor.lineHighlightBackground': '#1a2326',
+    'editor.selectionBackground': '#ffd84d44',
+  },
+});
 
 import editorWorker from 'monaco-editor/editor/editor.worker?worker';
 import jsonWorker from 'monaco-editor/language/json/json.worker?worker';
@@ -44,7 +81,13 @@ onMounted(() => {
   editor = monaco.editor.create(editorElement.value, {
     value: props.modelValue,
     language: 'json',
-    theme: 'vs-dark',
+    theme: Dark.isActive ? 'ts-dark' : 'ts-light',
+    fontFamily: "'IBM Plex Mono', ui-monospace, Consolas, monospace",
+    fontSize: 13,
+    lineHeight: 20,
+    padding: { top: 10, bottom: 10 },
+    scrollBeyondLastLine: false,
+    renderLineHighlight: 'gutter',
     minimap: {
       enabled: false,
     },
@@ -54,6 +97,11 @@ onMounted(() => {
     if (editor) emit('update:modelValue', editor.getValue());
   });
 });
+
+watch(
+  () => Dark.isActive,
+  (dark) => monaco.editor.setTheme(dark ? 'ts-dark' : 'ts-light'),
+);
 
 onUnmounted(() => {
   editor?.dispose();
@@ -83,6 +131,6 @@ function onResize() {
 
 <style scoped>
 .editorWrapper {
-  background-color: #1e1e1e;
+  background-color: var(--ts-sheet);
 }
 </style>

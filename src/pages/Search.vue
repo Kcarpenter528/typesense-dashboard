@@ -1,14 +1,22 @@
 <template>
-  <q-page padding>
-    <q-tabs v-model="tab" dense class="bg-primary text-white" align="justify" narrow-indicator>
-      <q-tab name="form" label="InstantSearch Mode" />
-      <q-tab name="json" label="JSON Mode" />
-    </q-tabs>
+  <q-page class="ts-page">
+    <div class="row items-center justify-between q-mb-md">
+      <q-btn-toggle
+        v-model="tab"
+        no-caps
+        unelevated
+        dense
+        toggle-color="primary"
+        class="mode-toggle"
+        :options="[
+          { label: 'Browse', value: 'form', icon: 'sym_s_view_module' },
+          { label: 'Query as JSON', value: 'json', icon: 'sym_s_data_object' },
+        ]"
+      />
+    </div>
 
-    <q-separator />
-
-    <q-tab-panels v-model="tab" animated keep-alive>
-      <q-tab-panel name="form">
+    <q-tab-panels v-model="tab" animated keep-alive class="bg-transparent">
+      <q-tab-panel name="form" class="q-pa-none">
         <search-instant-search />
       </q-tab-panel>
       <q-tab-panel name="json" class="q-pa-none">
@@ -25,45 +33,41 @@ import SearchInstantSearch from '@/components/search/SearchInstantSearch.vue';
 
 const tab = ref('form');
 </script>
-<style>
+<style lang="scss">
+.mode-toggle {
+  border: 1px solid var(--ts-rule);
+  border-radius: 8px;
+  .q-btn {
+    padding: 4px 14px;
+  }
+}
+
+.ais-Hits-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
 .ais-Hits-item,
 .ais-InfiniteHits-item,
-.ais-InfiniteResults-item,
 .ais-Results-item {
-  border-radius: 4px;
-  padding: 0;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
   display: flex;
   flex-direction: column;
+  background: var(--ts-sheet);
+  border: 1px solid var(--ts-rule);
+  border-radius: 12px;
+  box-shadow: none !important;
+  overflow: hidden;
+  &:hover {
+    border-color: var(--ts-rule-strong);
+  }
 }
 
 .ais-Hits-item .text-body2 [class^='ais-'] {
   font-size: 0.875rem !important;
-}
-
-@media (max-width: 1979px) {
-  .ais-Hits-item,
-  .ais-InfiniteHits-item,
-  .ais-InfiniteResults-item,
-  .ais-Results-item {
-    width: calc(33% - 1rem);
-  }
-}
-
-@media (max-width: 1023px) {
-  .ais-Hits-item,
-  .ais-InfiniteHits-item,
-  .ais-InfiniteResults-item,
-  .ais-Results-item {
-    width: calc(50% - 1rem);
-  }
-}
-
-@media (max-width: 599px) {
-  .ais-Hits-item,
-  .ais-InfiniteHits-item,
-  .ais-InfiniteResults-item,
-  .ais-Results-item {
-    width: calc(100% - 1rem);
-  }
 }
 </style>

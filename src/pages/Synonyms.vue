@@ -1,408 +1,296 @@
 <template>
-  <q-page padding>
-    <q-banner v-if="!route.params.name && !store.data.features.synonymSets" inline-actions class="bg-warning">
-      Global synonym sets are not available with this server or API key. Use a collection-scoped
-      synonym page when available.
-    </q-banner>
-    <template v-else>
-    <q-expansion-item
-      v-model="state.expanded"
-      expand-separator
-      icon="sym_s_add_circle"
-      expand-icon="sym_s_unfold_more"
-      expanded-icon="sym_s_unfold_less"
-      :label="`${isUpdate ? 'Update' : 'Add'} Synonym`"
-      header-class="bg-primary text-white"
-    >
-      <q-card class="bg-surface column">
-        <q-card-section>
-          <q-input v-model="state.id" label="ID" filled class="q-mb-md"></q-input>
-          <q-option-group
-            v-model="state.type"
-            filled
-            :options="typeOptions"
-            color="primary"
-            inline
-            class="q-mb-md"
-          />
-
-          <q-input
-            v-if="state.type === types.ONE_WAY"
-            v-model="state.synonym.root"
-            filled
-            stack-label
-            label="Root"
-            class="q-mb-md"
-          ></q-input>
-
-          <q-select
-            v-model="state.synonym.synonyms"
-            filled
-            multiple
-            use-chips
-            use-input
-            new-value-mode="add"
-            stack-label
-            hide-dropdown-icon
-            label="Synonyms"
-            hint="Enter a synonym and press enter"
-          >
-          </q-select>
-        </q-card-section>
-        <q-separator />
-        <q-card-section>
-          <div class="text-overline">Optional</div>
-          <q-select
-            v-model="state.synonym.symbols_to_index"
-            filled
-            multiple
-            use-chips
-            use-input
-            new-value-mode="add"
-            stack-label
-            hide-dropdown-icon
-            label="Symbols to Index"
-            hint="Enter a symbol (eg: +, - ) and press enter"
-          >
-          </q-select>
-
-          <q-input
-            v-model="state.synonym.locale"
-            filled
-            stack-label
-            label="Locale"
-            class="q-mb-md"
-            hint="Leave blank to auto-detect"
-          ></q-input>
-        </q-card-section>
-
-        <q-card-actions align="right" class="bg-primary">
-          <q-btn
-            size="md"
-            padding="sm lg"
-            unelevated
-            color="primary"
-            :disable="!isValid"
-            @click="createSynonym()"
-            >{{ isUpdate ? 'Update' : 'Add' }} Synonym</q-btn
-          >
-        </q-card-actions>
-      </q-card>
-    </q-expansion-item>
-
-    <q-table
-      class="q-mt-md"
+  <q-page class="ts-page">
+    <page-header
+      v-if="setsMode"
       title="Synonyms"
-      flat
-      bordered
-      :filter="state.filter"
-      :rows="store.data.synonyms"
-      :columns="state.columns"
-      row-key="id"
-      :pagination="{ rowsPerPage: 50, sortBy: 'name' }"
+      description="Synonyms let a search for one word find documents that use another. They live in sets; a collection uses the sets you link to it."
+    />
+
+    <rule-set-browser
+      v-if="setsMode"
+      v-model:selected="selectedSet"
+      kind="synonym"
+      :rule-sets="ruleSets"
+      item-noun="synonym"
+      empty-icon="sym_s_join"
+      empty-title="Create your first synonym set"
+      empty-body="Group related synonyms in a set, such as product terms, then link it to the collections that should use them."
     >
-      <template #top-left>
-        <div class="text-h6"><q-icon size="md" name="sym_s_dataset_linked" /> Synonyms</div>
-      </template>
-      <template #top-right>
-        <q-input v-model="state.filter" borderless dense debounce="300" placeholder="Search">
-          <template #append>
-            <q-icon name="sym_s_search" />
-          </template>
-        </q-input>
-      </template>
-      <template #body-cell-actions="props">
-        <q-td class="text-right">
-          <q-btn flat icon="sym_s_edit" title="Edit" @click="editSynonym(props.row)"></q-btn>
-          <q-btn
-            v-if="store.data.features.synonymSets && !route.params.name && props.row._setName"
-            flat
-            icon="sym_s_add_link"
-            title="Link to collection"
-            @click="openLinkDialog(props.row._setName)"
-          ></q-btn>
-          <q-btn
-            flat
-            color="negative"
-            icon="sym_s_delete_forever"
-            title="Delete"
-            @click="deleteSynonym(props.row)"
-          ></q-btn>
-        </q-td>
-      </template>
-    </q-table>
-
-    <q-dialog v-model="linkDialog.open">
-      <q-card style="min-width: 350px">
-        <q-card-section>
-          <div class="text-h6">Link to collection</div>
-          <div class="text-caption q-mt-xs">Set: {{ linkDialog.setName }}</div>
-        </q-card-section>
-        <q-card-section>
-          <q-select
-            v-model="linkDialog.selectedCollection"
-            :options="availableCollectionsForSet(linkDialog.setName)"
-            option-label="name"
-            option-value="name"
-            emit-value
-            map-options
-            outlined
-            label="Collection"
-          />
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn v-close-popup flat label="Cancel" />
-          <q-btn
-            unelevated
-            color="primary"
-            label="Link"
-            :disable="!linkDialog.selectedCollection"
-            @click="confirmLink"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-card v-if="store.data.features.synonymSets && route.params.name" class="q-mt-md" flat bordered>
-      <q-card-section class="row items-center q-gutter-md">
-        <div class="text-subtitle2">Link existing global set to this collection</div>
-        <q-select
-          v-model="selectedSetToLink"
-          :options="unlinkedSets"
-          dense
-          outlined
-          clearable
-          label="Global synonym set"
-          style="min-width: 250px"
+      <template #default="{ set }">
+        <synonym-table
+          :rows="set.items as SynonymItem[]"
+          @create="openEditor()"
+          @edit="openEditor($event)"
+          @delete="removeItem"
         />
+      </template>
+    </rule-set-browser>
+
+    <template v-else-if="collectionName">
+      <synonym-table
+        :rows="store.data.synonyms as SynonymItem[]"
+        @create="openEditor()"
+        @edit="openEditor($event)"
+        @delete="removeItem"
+      />
+    </template>
+
+    <div v-else class="ts-sheet">
+      <empty-state
+        icon="sym_s_join"
+        title="Synonyms belong to a collection on this server"
+        body="Open a collection and choose its Synonyms tab. Synonym sets shared between collections need Typesense 30 or later."
+      >
+        <q-btn unelevated no-caps color="primary" label="Go to collections" to="/collections" />
+      </empty-state>
+    </div>
+
+    <side-sheet
+      v-model="editor.open"
+      :title="editor.isNew ? 'New synonym' : 'Edit synonym'"
+      :description="setsMode ? `In set ${selectedSet}` : `In collection ${collectionName}`"
+    >
+      <q-form id="synonym-form" class="column q-gutter-md" @submit="saveItem">
+        <div>
+          <div class="ts-eyebrow q-mb-sm">How should the words match?</div>
+          <div class="kinds">
+            <button
+              type="button"
+              class="kind"
+              :class="{ 'is-selected': !editor.oneWay }"
+              @click="editor.oneWay = false"
+            >
+              <span class="kind__example">tv = television</span>
+              <span class="kind__label">Same meaning, both ways</span>
+            </button>
+            <button
+              type="button"
+              class="kind"
+              :class="{ 'is-selected': editor.oneWay }"
+              @click="editor.oneWay = true"
+            >
+              <span class="kind__example">shoes → sneakers</span>
+              <span class="kind__label">One word also finds others</span>
+            </button>
+          </div>
+        </div>
+        <q-input
+          v-if="editor.oneWay"
+          v-model="editor.item.root"
+          outlined
+          label="When someone searches for"
+          placeholder="shoes"
+          lazy-rules
+          :rules="[(v) => !!v || 'Enter the search word']"
+        />
+        <q-select
+          v-model="editor.item.synonyms"
+          outlined
+          multiple
+          use-chips
+          use-input
+          new-value-mode="add-unique"
+          hide-dropdown-icon
+          input-debounce="0"
+          :label="editor.oneWay ? 'Also find' : 'Words that mean the same'"
+          hint="Type a word or phrase and press Enter."
+          lazy-rules
+          :rules="[
+            (v) =>
+              (v && v.length >= (editor.oneWay ? 1 : 2)) ||
+              (editor.oneWay ? 'Add at least one word' : 'Add at least two words'),
+          ]"
+        />
+        <q-expansion-item
+          dense
+          switch-toggle-side
+          header-class="q-px-none ts-muted"
+          label="More options"
+        >
+          <div class="column q-gutter-md q-pt-sm">
+            <q-input
+              v-model="editor.item.id"
+              outlined
+              label="ID"
+              :readonly="!editor.isNew"
+              hint="Created from the words if left empty."
+            />
+            <q-input
+              v-model="editor.item.locale"
+              outlined
+              label="Locale"
+              placeholder="en"
+              hint="Leave empty to detect it."
+            />
+            <q-select
+              v-model="editor.item.symbols_to_index"
+              outlined
+              multiple
+              use-chips
+              use-input
+              new-value-mode="add-unique"
+              hide-dropdown-icon
+              input-debounce="0"
+              label="Symbols to keep"
+              hint="Characters such as + or # that are part of the words, as in c++."
+            />
+          </div>
+        </q-expansion-item>
+      </q-form>
+      <template #actions>
+        <q-btn v-close-popup flat no-caps label="Cancel" />
         <q-btn
           unelevated
+          no-caps
           color="primary"
-          :disable="!selectedSetToLink"
-          @click="linkSet"
-          >Link to collection</q-btn
-        >
-      </q-card-section>
-    </q-card>
-    </template>
+          type="submit"
+          form="synonym-form"
+          :label="editor.isNew ? 'Add synonym' : 'Save synonym'"
+        />
+      </template>
+    </side-sheet>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { useNodeStore } from '@/stores/node';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { nanoid } from 'nanoid';
-import type { SynonymCreateSchema } from 'typesense/lib/Typesense/Synonyms';
-import type { SynonymSchema } from 'typesense/lib/Typesense/Synonym';
-import type { QTableProps } from 'quasar';
-import type { SynonymRow } from '@/stores/node';
+import { useNodeStore } from '@/stores/node';
+import { useRuleSets } from '@/shared/useRuleSets';
+import PageHeader from '@/components/ui/PageHeader.vue';
+import SideSheet from '@/components/ui/SideSheet.vue';
+import EmptyState from '@/components/ui/EmptyState.vue';
+import RuleSetBrowser from '@/components/rules/RuleSetBrowser.vue';
+import SynonymTable from '@/components/rules/SynonymTable.vue';
+import type { SynonymItem } from '@/components/rules/SynonymTable.vue';
 
 const $q = useQuasar();
 const store = useNodeStore();
 const route = useRoute();
+const ruleSets = useRuleSets('synonym');
 
-enum RootTypes {
-  ONE_WAY = 'one-way',
-  MULTI_WAY = 'multi-way',
-}
+const setsMode = computed(() => store.data.features.synonymSets);
+const collectionName = computed(() => (route.params.name as string | undefined) ?? '');
+const selectedSet = ref<string | null>(null);
 
-const types = RootTypes;
-
-const typeOptions = [
-  {
-    label: 'Multi-way synonyms',
-    value: RootTypes.MULTI_WAY,
-  },
-  {
-    label: 'One-way synonym',
-    value: RootTypes.ONE_WAY,
-  },
-];
-
-function initialSynonymData(): SynonymCreateSchema {
-  return {
-    root: '',
-    synonyms: [],
-    locale: '',
-    symbols_to_index: [],
-  };
-}
-
-const state = reactive({
-  expanded: store.data.synonyms.length === 0,
-  filter: '',
-  type: RootTypes.MULTI_WAY,
-  synonym: initialSynonymData(),
-  id: nanoid(),
-  setName: null as string | null,
-  columns: [
-    {
-      label: 'ID',
-      name: 'id',
-      field: 'id',
-      align: 'left',
-    },
-    {
-      label: 'Type',
-      name: 'type',
-      align: 'left',
-      field: (row: SynonymRow) => (row.root ? RootTypes.ONE_WAY : RootTypes.MULTI_WAY),
-      sortable: true,
-    },
-    {
-      label: 'Root',
-      name: 'root',
-      field: 'root',
-      align: 'left',
-      sortable: true,
-    },
-    {
-      label: 'Synonyms',
-      name: 'synonyms',
-      field: (row: SynonymRow) => row.synonyms.join(', '),
-      align: 'left',
-      sortable: true,
-    },
-    {
-      label: 'Symbols to Index',
-      name: 'symbols_to_index',
-      field: (row: SynonymSchema) => row.symbols_to_index?.join(', '),
-      align: 'left',
-      sortable: true,
-    },
-    {
-      label: 'Locale',
-      name: 'locale',
-      field: 'locale',
-      align: 'left',
-      sortable: true,
-    },
-    {
-      label: 'Actions',
-      name: 'actions',
-      align: 'right',
-    },
-  ] as QTableProps['columns'],
+const editor = reactive<{ open: boolean; isNew: boolean; oneWay: boolean; item: SynonymItem }>({
+  open: false,
+  isNew: true,
+  oneWay: false,
+  item: { id: '', synonyms: [] },
 });
 
-const isValid = computed(() => state.synonym.synonyms.length > 0 && state.id.length > 0);
-const isUpdate = computed(() => store.data.synonyms.map((s) => s.id).includes(state.id));
+function slug(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 32);
+}
 
-async function createSynonym() {
-  const synonym: SynonymCreateSchema = {
-    synonyms: JSON.parse(JSON.stringify(state.synonym.synonyms)),
+function openEditor(item?: SynonymItem) {
+  editor.isNew = !item;
+  editor.item = item
+    ? JSON.parse(JSON.stringify(item))
+    : { id: '', synonyms: [], root: '', locale: '', symbols_to_index: [] };
+  editor.oneWay = !!item?.root;
+  editor.open = true;
+}
+
+function buildItem(): SynonymItem {
+  const { id, synonyms, root, locale, symbols_to_index } = editor.item;
+  const item: SynonymItem = {
+    id: id?.trim() || `${slug(root || synonyms[0] || 'synonym')}-${nanoid(5).toLowerCase()}`,
+    synonyms: [...synonyms],
   };
-
-  if (state.type === types.ONE_WAY) {
-    synonym.root = state.synonym.root || '';
-  }
-  if (state.synonym.locale) {
-    synonym.locale = state.synonym.locale;
-  }
-  if (state.synonym.symbols_to_index && state.synonym.symbols_to_index.length > 0) {
-    synonym.symbols_to_index = state.synonym.symbols_to_index;
-  }
-
-  await store.createSynonym({
-    id: state.id,
-    synonym,
-    ...(state.setName ? { setName: state.setName } : {}),
-  });
-
-  state.id = nanoid();
-  state.synonym = initialSynonymData();
-  state.setName = null;
-  state.expanded = false;
+  if (editor.oneWay && root) item.root = root.trim();
+  if (locale) item.locale = locale;
+  if (symbols_to_index?.length) item.symbols_to_index = [...symbols_to_index];
+  return item;
 }
 
-function editSynonym(synonym: SynonymRow) {
-  const copy = JSON.parse(JSON.stringify(synonym));
-  const id = copy.id;
-  state.setName = copy._setName ?? null;
-  delete copy.id;
-  delete copy._setName;
-  state.id = id || nanoid();
-  state.synonym = copy;
-  state.type = state.synonym.root ? RootTypes.ONE_WAY : RootTypes.MULTI_WAY;
-  state.synonym.locale = state.synonym.locale || '';
-  state.synonym.symbols_to_index = state.synonym.symbols_to_index || [];
-  state.expanded = true;
-}
-
-function deleteSynonym(row: SynonymRow) {
-  $q.dialog({
-    title: 'Confirm',
-    message: `Delete synonym with id: ${row.id}?`,
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    void store.deleteSynonym({
-      id: row.id,
-      ...(row._setName ? { setName: row._setName } : {}),
-    });
-  });
-}
-
-const allGlobalSets = ref<string[]>([]);
-const selectedSetToLink = ref<string | null>(null);
-
-const unlinkedSets = computed(() => {
-  const linked = store.currentCollection?.synonym_sets ?? [];
-  return allGlobalSets.value.filter((s) => !linked.includes(s));
-});
-
-async function linkSet() {
-  if (!selectedSetToLink.value) return;
-  await store.linkSynonymSetToCollection(selectedSetToLink.value);
-  selectedSetToLink.value = null;
-  const sets = await store.fetchAllSynonymSets();
-  allGlobalSets.value = sets.map((s) => s.name);
-}
-
-const linkDialog = reactive({ open: false, setName: '', selectedCollection: '' });
-
-function openLinkDialog(setName: string) {
-  linkDialog.setName = setName;
-  linkDialog.selectedCollection = '';
-  linkDialog.open = true;
-}
-
-function availableCollectionsForSet(setName: string) {
-  return store.data.collections.filter((c) => !(c.synonym_sets ?? []).includes(setName));
-}
-
-async function confirmLink() {
-  await store.linkSynonymSetToCollection(linkDialog.setName, linkDialog.selectedCollection);
-  linkDialog.open = false;
-}
-
-async function refreshPageData() {
-  const collectionName = (route.params.name as string) || '';
-  if (store.data.features.synonymSets) {
-    void store.getSynonyms(collectionName);
-    if (collectionName) {
-      const sets = await store.fetchAllSynonymSets();
-      allGlobalSets.value = sets.map((s) => s.name);
-    } else {
-      allGlobalSets.value = [];
-    }
-  } else if (collectionName) {
-    void store.getSynonyms(collectionName);
+async function saveItem() {
+  const item = buildItem();
+  let ok: boolean;
+  if (setsMode.value) {
+    if (!selectedSet.value) return;
+    ok = await ruleSets.saveItem(selectedSet.value, item);
   } else {
-    allGlobalSets.value = [];
+    const { id, ...synonym } = item;
+    await store.createSynonym({ id, synonym });
+    ok = !store.error;
+  }
+  if (ok) {
+    editor.open = false;
+    $q.notify({
+      type: 'positive',
+      position: 'top',
+      timeout: 1500,
+      message: editor.isNew ? 'Synonym added' : 'Synonym saved',
+    });
   }
 }
 
-onMounted(() => {
-  void refreshPageData();
-});
+function removeItem(item: SynonymItem) {
+  const words = item.root
+    ? `${item.root} → ${item.synonyms.join(', ')}`
+    : item.synonyms.join(' = ');
+  $q.dialog({
+    title: 'Delete this synonym?',
+    message: words,
+    cancel: { flat: true, noCaps: true, label: 'Cancel' },
+    ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete synonym' },
+  }).onOk(() => {
+    if (setsMode.value && selectedSet.value) void ruleSets.deleteItem(selectedSet.value, item.id);
+    else void store.deleteSynonym({ id: item.id });
+  });
+}
 
-watch(
-  () => route.params.name,
-  () => {
-    void refreshPageData();
-  },
-);
+function refresh() {
+  if (setsMode.value) void ruleSets.load();
+  else if (collectionName.value) store.getSynonyms(collectionName.value);
+}
+
+onMounted(refresh);
+watch([setsMode, collectionName], refresh);
 </script>
+
+<style scoped lang="scss">
+.kinds {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.kind {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  text-align: left;
+  font: inherit;
+  color: var(--ts-ink);
+  background: var(--ts-sheet);
+  border: 1px solid var(--ts-rule);
+  border-radius: 10px;
+  cursor: pointer;
+  &:hover {
+    border-color: var(--ts-rule-strong);
+  }
+  &.is-selected {
+    border-color: var(--ts-primary);
+    box-shadow: 0 0 0 1px var(--ts-primary);
+  }
+}
+
+.kind__example {
+  font-family: var(--ts-font-mono);
+  font-size: 0.85rem;
+}
+
+.kind__label {
+  font-size: 0.78rem;
+  color: var(--ts-ink-3);
+}
+</style>

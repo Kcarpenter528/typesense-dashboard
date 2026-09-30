@@ -1,46 +1,45 @@
 <template>
-  <q-card>
-    <q-tabs
-      v-model="tab"
-      dense
-      class="text-grey"
-      active-color="primary"
-      indicator-color="primary"
-      align="justify"
-      narrow-indicator
-    >
-      <q-tab name="form" label="Form Mode" />
-      <q-tab name="json" label="JSON Mode" />
-    </q-tabs>
+  <q-card flat bordered class="collection-ui">
+    <div class="collection-ui__mode row items-center justify-between">
+      <q-btn-toggle
+        v-model="tab"
+        no-caps
+        unelevated
+        dense
+        toggle-color="primary"
+        class="mode-toggle"
+        :options="[
+          { label: 'Form', value: 'form' },
+          { label: 'JSON', value: 'json' },
+        ]"
+      />
+      <span class="ts-faint text-caption">{{ schema.fields.length }} fields</span>
+    </div>
 
     <q-separator />
 
-    <q-tab-panels
-      v-model="tab"
-      animated
-      :style="createMode ? 'height: 60vh' : ''"
-      class="bg-surface"
-    >
+    <q-tab-panels v-model="tab" animated class="collection-ui__panels">
       <q-tab-panel name="form">
         <q-card-section>
           <div class="row q-gutter-md">
             <q-input
               v-model="schema.name"
               class="col"
-              filled
+              outlined
               dense
-              label="Collection Name"
+              label="Collection name"
               placeholder="books"
               :disable="!createMode"
-              :rules="[(val) => !!val || 'Field is required']"
+              :rules="[(val) => !!val || 'Enter a name']"
             />
             <q-select
               v-model="schema.default_sorting_field"
-              filled
+              outlined
               class="col"
               dense
               :options="availableSortFields"
-              label="Default sort field optional, but must be int32 or float"
+              label="Default sort field"
+              hint="Optional. A numeric field used when a search doesn't sort."
             >
             </q-select>
           </div>
@@ -53,7 +52,7 @@
             <q-select
               v-model="schema.token_separators"
               class="col"
-              filled
+              outlined
               dense
               multiple
               use-chips
@@ -67,7 +66,7 @@
             <q-select
               v-model="schema.symbols_to_index"
               class="col"
-              filled
+              outlined
               dense
               multiple
               use-chips
@@ -119,21 +118,20 @@
       </q-tab-panel>
 
       <q-tab-panel name="json" class="q-pa-none">
-        <monaco-editor v-model="schemaJson" style="height: 60vh"></monaco-editor>
-        <q-banner v-if="jsonError" inline-actions class="text-white bg-red">
-          Invalid Format: {{ jsonError }}
-        </q-banner>
+        <monaco-editor v-model="schemaJson" style="height: 60vh" />
+        <div v-if="jsonError" class="json-error">This isn't valid JSON yet: {{ jsonError }}</div>
       </q-tab-panel>
     </q-tab-panels>
-    <q-separator />
-    <q-card-actions align="between" class="bg-primary">
-      <q-btn size="md" padding="sm lg" unelevated color="primary" @click="addField()"
-        >Add field</q-btn
-      >
-      <q-btn size="md" padding="sm lg" unelevated color="primary" @click="emit('submit', schema)">{{
-        primaryActionLabel
-      }}</q-btn>
-    </q-card-actions>
+    <div class="collection-ui__actions row items-center justify-between">
+      <q-btn flat no-caps icon="sym_s_add" label="Add field" @click="addField()" />
+      <q-btn
+        unelevated
+        no-caps
+        color="primary"
+        :label="primaryActionLabel"
+        @click="emit('submit', schema)"
+      />
+    </div>
   </q-card>
 </template>
 
@@ -307,3 +305,43 @@ function removeField(field: CollectionFieldSchema) {
   if (index > -1) schema.value.fields.splice(index, 1);
 }
 </script>
+
+<style scoped lang="scss">
+.collection-ui {
+  overflow: visible;
+}
+
+.collection-ui__mode {
+  padding: 10px 14px;
+}
+
+.mode-toggle {
+  border: 1px solid var(--ts-rule);
+  border-radius: 8px;
+  :deep(.q-btn) {
+    padding: 2px 14px;
+  }
+}
+
+.collection-ui__panels {
+  background: transparent;
+}
+
+.json-error {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  color: var(--q-negative);
+  background: var(--ts-danger-soft);
+}
+
+// Keeps "Add field" and the save button in reach on long schemas.
+.collection-ui__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 10px 14px;
+  background: var(--ts-sheet);
+  border-top: 1px solid var(--ts-rule);
+  border-radius: 0 0 12px 12px;
+}
+</style>
