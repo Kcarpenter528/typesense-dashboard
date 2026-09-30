@@ -1,0 +1,62 @@
+name: Tests
+
+# Runs on every push to any branch, so each branch shows whether it passes
+# before it is opened as a pull request. Can also be started by hand.
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the run that is still going.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            src-electron/package-lock.json
+
+      - name: Install app dependencies
+        run: npm ci
+
+      # The type check also covers src-electron, which needs Electron's type
+      # definitions but not the Electron binary itself.
+      - name: Install Electron types
+        run: npm ci --prefix src-electron --ignore-scripts
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+
+      # The checks below run even when an earlier one fails, so a single run
+      # reports every problem instead of stopping at the first.
+      - name: Unit tests
+        id: unit
+        run: npm test
+
+      - name: Lint
+        if: ${{ !cancelled() && steps.unit.conclusion != 'skipped' }}
+        run: npm run lint
+
+      - name: Type check
+        if: ${{ !cancelled() && steps.unit.conclusion != 'skipped' }}
+        run: npm run type-check
+
+      - name: Formatting
+        if: ${{ !cancelled() && steps.unit.conclusion != 'skipped' }}
+        run: npx prettier --check "src/**/*.{ts,vue,scss}"
