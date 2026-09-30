@@ -438,6 +438,10 @@ export function toDockerRun(options: StartupConfigOptions): string {
   return lines.join(' \\\n');
 }
 
+function escapeYamlDoubleQuoted(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 export function toDockerCompose(options: StartupConfigOptions): string {
   const env = [
     ['TYPESENSE_DATA_DIR', options.dataDir],
@@ -455,7 +459,7 @@ export function toDockerCompose(options: StartupConfigOptions): string {
     '    volumes:',
     `      - typesense-data:${options.dataDir}`,
     '    environment:',
-    ...env.map(([name, value]) => `      ${name}: "${String(value).replace(/"/g, '\\"')}"`),
+    ...env.map(([name, value]) => `      ${name}: "${escapeYamlDoubleQuoted(String(value))}"`),
     'volumes:',
     '  typesense-data:',
   ].join('\n');
