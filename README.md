@@ -54,7 +54,7 @@ docker build -t typesense-dashboard .
 docker run -d -p 80:80 typesense-dashboard
 ```
 
-`caddy` serves the files. You can also copy `/srv` from the final image into another image:
+nginx serves the files. You can also copy `/srv` from the final image into another image:
 
 ```Dockerfile
 FROM alpine
