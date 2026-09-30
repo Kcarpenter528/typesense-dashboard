@@ -30,6 +30,11 @@ const routes: RouteRecordRaw[] = [
         meta: { help: 'apiKeys' },
       },
       {
+        path: 'analytics',
+        component: () => import('@/pages/SearchAnalytics.vue'),
+        meta: { help: 'searchAnalytics' },
+      },
+      {
         path: 'analyticsrules',
         component: () => import('@/pages/AnalyticsRules.vue'),
         meta: { help: 'analytics' },

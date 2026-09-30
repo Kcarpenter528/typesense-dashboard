@@ -116,6 +116,11 @@ export class Api {
     return this.typesenseClient?.analytics.rules().upsert(name, rule);
   }
 
+  /** Event counters kept by the server. Not in the API reference, so callers must tolerate failure. */
+  public async getAnalyticsStatus(): Promise<Record<string, unknown> | undefined> {
+    return (await this.axiosClient?.get('/analytics/status'))?.data;
+  }
+
   public deleteAnalyticsRule(name: string) {
     return this.typesenseClient?.analytics.rules(name).delete();
   }
