@@ -190,27 +190,71 @@ Make it executable and then you can run it from command line.
 
 ## Screenshots
 
-![server status](docs/images/server.png)
+### Server
 
-![collections](docs/images/collections.png)
+Server status: health, request rates, search latency and resource use, refreshed every two seconds.
 
-![collection add](docs/images/collection_add.png)
+![Server status](docs/images/server.png)
 
-![aliases](docs/images/aliases.png)
+Server settings: change runtime settings, run operations such as snapshots and cache clearing, and generate the startup configuration for settings like CORS.
 
-![apikeys](docs/images/apikeys.png)
+![Server settings](docs/images/settings.png)
 
-![document](docs/images/document.png)
+### Collections and documents
 
-![search](docs/images/search.png)
+![Collections](docs/images/collections.png)
 
-![search](docs/images/search_json.png)
+Create a collection with a form or as JSON. Each setting has an ⓘ button that explains it.
 
-![schema](docs/images/schema.png)
+![New collection](docs/images/collection_add.png)
 
-![synonyms](docs/images/synonyms.png)
+![Schema editor](docs/images/schema.png)
 
-![curations](docs/images/curations.png)
+![Add documents](docs/images/document.png)
+
+### Search
+
+Browse with facets and sorting:
+
+![Search](docs/images/search.png)
+
+Send any search parameters as JSON:
+
+![Search as JSON](docs/images/search_json.png)
+
+Ask in plain language, with natural-language search or conversational search (RAG):
+
+![Ask](docs/images/ask.png)
+
+### Relevance
+
+![Synonyms](docs/images/synonyms.png)
+
+![Curations](docs/images/curations.png)
+
+### AI search and access
+
+![Conversation models](docs/images/ai_models.png)
+
+![Aliases](docs/images/aliases.png)
+
+![API keys](docs/images/apikeys.png)
+
+### Help and navigation
+
+Every page and setting explains itself and links to the matching section of the Typesense API reference or Guide:
+
+![Help for a field option](docs/images/field_help.png)
+
+![Help](docs/images/help.png)
+
+Press Ctrl K (⌘K on macOS) to jump to any page or collection:
+
+![Jump to a page or collection](docs/images/jump.png)
+
+Dark mode:
+
+![Dark mode](docs/images/dark.png)
 
 ## Known Issues and Limitations
 
