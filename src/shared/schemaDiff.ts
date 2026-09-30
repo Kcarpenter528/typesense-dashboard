@@ -4,6 +4,7 @@ import type {
   CollectionUpdateSchema,
 } from 'typesense/lib/Typesense/Collection';
 import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
+import { SORTABLE_BY_DEFAULT_TYPES } from './fieldOptions';
 
 /**
  * Collection settings that `PATCH /collections/:name` accepts (Typesense v30).
@@ -19,11 +20,6 @@ const SERVER_ONLY_COLLECTION_KEYS = ['created_at', 'num_documents', 'num_memory_
  * Keys the server attaches to fields in some responses that are not part of the field definition.
  */
 const IGNORED_FIELD_KEYS = ['nested', 'nested_array', 'drop'];
-
-/**
- * Scalar types for which Typesense enables `sort` unless told otherwise.
- */
-const SORTABLE_BY_DEFAULT_TYPES = ['int32', 'int64', 'float', 'bool', 'geopoint'];
 
 export interface ValueChange {
   key: string;
@@ -83,6 +79,8 @@ function isEmpty(value: unknown): boolean {
   return value === undefined || value === null || value === '';
 }
 
+const DEFAULT_HNSW_PARAMS = { M: 16, ef_construction: 200 };
+
 function fieldDefaults(field: CollectionFieldSchema): Record<string, unknown> {
   const defaults: Record<string, unknown> = {
     facet: false,
@@ -96,12 +94,20 @@ function fieldDefaults(field: CollectionFieldSchema): Record<string, unknown> {
     store: true,
     truncate_len: 100,
     range_index: false,
+    token_separators: [],
+    symbols_to_index: [],
+    async_reference: false,
+    cascade_delete: true,
   };
-  if (field.num_dim) {
+  if (field.num_dim || field.embed) {
     defaults.vec_dist = 'cosine';
-    defaults.hnsw_params = { M: 16, ef_construction: 200 };
+    defaults.hnsw_params = DEFAULT_HNSW_PARAMS;
   }
   return defaults;
+}
+
+function cleanObject(value: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).filter(([, v]) => !isEmpty(v)));
 }
 
 /**
@@ -113,6 +119,13 @@ export function cleanField(field: CollectionFieldSchema): CollectionFieldSchema 
   for (const [key, value] of Object.entries(field)) {
     if (IGNORED_FIELD_KEYS.includes(key) || isEmpty(value)) continue;
     if (key === 'num_dim' && (field.type !== 'float[]' || !value)) continue;
+    if (key === 'embed' && value && typeof value === 'object') {
+      const embed = value as { model_config?: Record<string, unknown> };
+      cleaned[key] = embed.model_config
+        ? { ...embed, model_config: cleanObject(embed.model_config) }
+        : embed;
+      continue;
+    }
     cleaned[key] = value;
   }
   return cleaned as CollectionFieldSchema;
@@ -124,7 +137,16 @@ export function cleanField(field: CollectionFieldSchema): CollectionFieldSchema 
  */
 export function normalizeField(field: CollectionFieldSchema): Record<string, unknown> {
   const cleaned = cleanField(field);
-  return { ...fieldDefaults(cleaned), ...cleaned };
+  const normalized: Record<string, unknown> = { ...fieldDefaults(cleaned), ...cleaned };
+  if (cleaned.hnsw_params) {
+    // The server fills in whichever HNSW parameter was left out.
+    normalized.hnsw_params = { ...DEFAULT_HNSW_PARAMS, ...cleaned.hnsw_params };
+  }
+  if (cleaned.embed) {
+    // The server derives the dimensions of an auto-embedding field from its model.
+    delete normalized.num_dim;
+  }
+  return normalized;
 }
 
 export function fieldsEqual(a: CollectionFieldSchema, b: CollectionFieldSchema): boolean {

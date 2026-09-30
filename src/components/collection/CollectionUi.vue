@@ -84,82 +84,37 @@
             symbols to index can only be set when a collection is created. Changing them recreates
             the collection; its documents are kept.
           </div>
-          <div class="text-subtitle1 q-pt-md">Fields</div>
-          <q-card
-            v-for="(field, index) in schema.fields"
-            :key="index"
-            flat
-            bordered
-            class="q-mb-md"
+          <q-expansion-item
+            v-model="metadataOpen"
+            dense
+            switch-toggle-side
+            class="q-mt-md"
+            header-class="text-grey-8 q-px-none"
+            label="Metadata"
+            :caption="metadataCaption"
           >
-            <q-card-section class="row q-col-gutter-md">
-              <q-input
-                v-model="field.name"
-                class="col-12 col-sm-6"
-                dense
-                outlined
-                label="Field Name"
-                placeholder="title"
-                :hint="nestedParentHint(field)"
-                :rules="[(val) => !!val || 'Field is required']"
-              />
-
-              <q-select
-                v-model="field.type"
-                class="col-12 col-sm-4"
-                dense
-                outlined
-                label="type"
-                :options="types"
-                :rules="[(val) => !!val || 'Field is required']"
-              />
-              <q-input
-                v-if="field.type === 'float[]'"
-                v-model.number="field.num_dim"
-                class="col-12 col-sm-2"
-                dense
-                outlined
-                type="number"
-                label="num_dim"
-                placeholder=""
-              />
-              <q-input
-                v-if="field.type?.startsWith('string')"
-                v-model="field.locale"
-                class="col-12 col-sm-2"
-                dense
-                outlined
-                label="locale"
-                placeholder=""
-              />
-            </q-card-section>
-            <q-separator></q-separator>
-            <q-card-actions align="between">
-              <div>
-                <q-checkbox v-model="field.optional" label="optional" />
-                <q-checkbox v-model="field.facet" label="facet" />
-                <q-checkbox v-model="field.index" label="index" />
-                <q-checkbox v-model="field.sort" label="sort" />
-                <q-checkbox v-model="field.infix" label="infix" />
-                <q-checkbox v-model="field.stem" label="stem" />
-                <q-select
-                  v-if="field.stem"
-                  :model-value="getStemDictionaryValue(field)"
-                  :options="stemmingDictionaryOptions"
-                  dense
-                  outlined
-                  label="Stemming Dictionary"
-                  class="q-mt-sm"
-                  style="min-width: 200px"
-                  @update:model-value="setStemDictionaryValue(field, $event)"
-                />
-              </div>
-
-              <q-btn size="md" padding="sm lg" unelevated @click="removeField(field)"
-                >Remove Field</q-btn
-              >
-            </q-card-actions>
-          </q-card>
+            <q-input
+              v-model="metadataText"
+              type="textarea"
+              outlined
+              autogrow
+              class="metadata-input q-mt-sm"
+              placeholder='{ "owner": "search-team" }'
+              hint="Any JSON object. Stored with the collection and can be changed at any time."
+              :error="!!metadataError"
+              :error-message="metadataError ?? undefined"
+            />
+          </q-expansion-item>
+          <div class="text-subtitle1 q-pt-md">Fields</div>
+          <field-editor
+            v-for="field in schema.fields"
+            :key="fieldKey(field)"
+            :model-value="field"
+            :siblings="schema.fields"
+            :reference-options="referenceOptions"
+            :stemming-dictionary-options="stemmingDictionaryOptions"
+            @remove="removeField(field)"
+          />
         </q-card-section>
       </q-tab-panel>
 
@@ -189,6 +144,7 @@ import { computed, ref, watch } from 'vue';
 import type { PropType } from 'vue';
 import { useNodeStore } from '@/stores/node';
 import MonacoEditor from '../MonacoEditor.vue';
+import FieldEditor from './FieldEditor.vue';
 import { isObjectType } from '@/shared/schemaDiff';
 
 interface Props {
@@ -221,27 +177,6 @@ const tab = ref<'form' | 'json'>('form');
 const schema = ref<CollectionCreateSchema>(createDefaultSchema());
 const jsonError = ref<string | null>(null);
 
-const types = [
-  'string',
-  'string[]',
-  'int32',
-  'int32[]',
-  'int64',
-  'int64[]',
-  'float',
-  'float[]',
-  'bool',
-  'bool[]',
-  'geopoint',
-  'geopoint[]',
-  'geopolygon',
-  'object',
-  'object[]',
-  'string*',
-  'image',
-  'auto',
-];
-
 const availableSortFields = computed(() => {
   const compatibleFields = schema.value.fields.filter(
     (field) =>
@@ -249,6 +184,52 @@ const availableSortFields = computed(() => {
   );
   return [''].concat(compatibleFields.map((field) => field.name));
 });
+
+/** `collection.field` targets for reference fields, from the other collections on the server. */
+const referenceOptions = computed(() =>
+  store.data.collections
+    .filter((c) => c.name !== schema.value.name)
+    .flatMap((c) => [
+      `${c.name}.id`,
+      ...(c.fields ?? [])
+        .filter((f) => f.name !== 'id' && !isObjectType(f.type) && !f.name.includes('*'))
+        .map((f) => `${c.name}.${f.name}`),
+    ]),
+);
+
+const metadataText = ref('');
+const metadataError = ref<string | null>(null);
+const metadataOpen = ref(false);
+const metadataCaption = computed(() => {
+  const keys = Object.keys(schema.value.metadata ?? {});
+  return keys.length ? keys.join(', ') : 'None';
+});
+
+watch(metadataText, (text) => {
+  if (!text.trim()) {
+    schema.value.metadata = {};
+    metadataError.value = null;
+    return;
+  }
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      metadataError.value = 'Metadata must be a JSON object';
+      return;
+    }
+    schema.value.metadata = parsed;
+    metadataError.value = null;
+  } catch (error) {
+    metadataError.value = (error as Error).message;
+  }
+});
+
+function syncMetadataText() {
+  const metadata = schema.value.metadata;
+  metadataText.value =
+    metadata && Object.keys(metadata).length ? JSON.stringify(metadata, null, 2) : '';
+  metadataError.value = null;
+}
 
 const stemmingDictionaryOptions = computed(() => {
   return ['default'].concat(store.data.stemmingDictionaries || []);
@@ -260,6 +241,7 @@ const schemaJson = computed({
     try {
       schema.value = JSON.parse(json);
       jsonError.value = null;
+      syncMetadataText();
     } catch (error) {
       jsonError.value = (error as Error).message;
     }
@@ -270,9 +252,24 @@ watch(
   () => props.initialSchema,
   (initialSchema) => {
     schema.value = cloneSchema(initialSchema ?? createDefaultSchema());
+    syncMetadataText();
+    metadataOpen.value = metadataText.value !== '';
   },
   { immediate: true },
 );
+
+// Stable keys per field object, so editor state (e.g. expanded sections) follows the
+// field when the list is reordered or reloaded, and renaming a field does not remount it.
+const fieldKeys = new WeakMap<CollectionFieldSchema, number>();
+let nextFieldKey = 0;
+function fieldKey(field: CollectionFieldSchema) {
+  let key = fieldKeys.get(field);
+  if (key === undefined) {
+    key = nextFieldKey++;
+    fieldKeys.set(field, key);
+  }
+  return key;
+}
 
 function createEmptyField(): CollectionFieldSchema {
   return {
@@ -281,11 +278,6 @@ function createEmptyField(): CollectionFieldSchema {
     facet: false,
     optional: false,
     index: true,
-    sort: false,
-    infix: false,
-    stem: false,
-    locale: '',
-    stem_dictionary: '',
   };
 }
 
@@ -313,23 +305,5 @@ function addField() {
 function removeField(field: CollectionFieldSchema) {
   const index = schema.value.fields.indexOf(field);
   if (index > -1) schema.value.fields.splice(index, 1);
-}
-
-function nestedParentHint(field: CollectionFieldSchema) {
-  const name = field.name ?? '';
-  const parent = schema.value.fields.find(
-    (f) => f !== field && isObjectType(f.type) && name.startsWith(`${f.name}.`),
-  );
-  return parent ? `Nested sub-field of ${parent.name}` : undefined;
-}
-
-function getStemDictionaryValue(field: CollectionFieldSchema) {
-  return typeof field.stem_dictionary === 'string' && field.stem_dictionary
-    ? field.stem_dictionary
-    : 'default';
-}
-
-function setStemDictionaryValue(field: CollectionFieldSchema, value: string) {
-  field.stem_dictionary = value === 'default' ? '' : value;
 }
 </script>
