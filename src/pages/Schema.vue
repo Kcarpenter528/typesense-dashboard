@@ -19,10 +19,9 @@ import { useQuasar } from 'quasar';
 import { useNodeStore } from '@/stores/node';
 import CollectionUi from '@/components/collection/CollectionUi.vue';
 import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
-import type {
-  CollectionSchema,
-  CollectionUpdateSchema,
-} from 'typesense/lib/Typesense/Collection';
+import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
+import SchemaChangeDialog from '@/components/collection/SchemaChangeDialog.vue';
+import { diffSchema } from '@/shared/schemaDiff';
 
 const $q = useQuasar();
 const store = useNodeStore();
@@ -76,24 +75,35 @@ function drop(name: string) {
   });
 }
 
-function update(updatedSchema: CollectionUpdateSchema) {
-  if (!schema.value || !schema.value.name || !schema.value.fields) {
+function update(editedSchema: CollectionCreateSchema) {
+  const collection = store.currentCollection;
+  if (!collection) return;
+
+  const plan = diffSchema(collection, editedSchema);
+
+  if (plan.errors.length) {
+    $q.dialog({
+      title: 'Cannot update schema',
+      message: plan.errors.map((e) => `• ${e}`).join('\n'),
+      style: 'white-space: pre-line',
+    });
     return;
   }
-  const update = {
-    fields: schema.value.fields
-      .map((f: any) => {
-        return {
-          name: f.name,
-          drop: true,
-        };
-      })
-      .concat(JSON.parse(JSON.stringify(updatedSchema.fields))),
-  } as CollectionUpdateSchema;
+  if (!plan.hasChanges) {
+    $q.notify({ message: 'No changes to apply', color: 'grey-8', position: 'top', timeout: 1500 });
+    return;
+  }
 
-  void store.updateCollection({
-    collectionName: schema.value.name,
-    schema: update,
+  $q.dialog({
+    component: SchemaChangeDialog,
+    componentProps: {
+      plan,
+      collectionName: collection.name,
+      documentCount: collection.num_documents ?? 0,
+      editedSchema,
+    },
+  }).onOk(() => {
+    $q.notify({ message: 'Schema updated', color: 'positive', position: 'top', timeout: 1500 });
   });
 }
 </script>

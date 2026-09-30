@@ -44,6 +44,46 @@
             >
             </q-select>
           </div>
+          <div class="row q-gutter-md items-start q-pt-sm">
+            <q-toggle
+              v-model="schema.enable_nested_fields"
+              class="col-12 col-md-auto"
+              label="Enable nested fields (object / object[])"
+            />
+            <q-select
+              v-model="schema.token_separators"
+              class="col"
+              filled
+              dense
+              multiple
+              use-chips
+              use-input
+              hide-dropdown-icon
+              new-value-mode="add-unique"
+              input-debounce="0"
+              label="Token separators"
+              hint="Characters that split words, e.g. - or /"
+            />
+            <q-select
+              v-model="schema.symbols_to_index"
+              class="col"
+              filled
+              dense
+              multiple
+              use-chips
+              use-input
+              hide-dropdown-icon
+              new-value-mode="add-unique"
+              input-debounce="0"
+              label="Symbols to index"
+              hint="Special characters to keep, e.g. + or #"
+            />
+          </div>
+          <div v-if="!createMode" class="text-caption text-grey-7 q-pt-md">
+            <q-icon name="sym_s_lock" /> Default sort field, nested fields, token separators and
+            symbols to index can only be set when a collection is created. Changing them recreates
+            the collection; its documents are kept.
+          </div>
           <div class="text-subtitle1 q-pt-md">Fields</div>
           <q-card
             v-for="(field, index) in schema.fields"
@@ -60,6 +100,7 @@
                 outlined
                 label="Field Name"
                 placeholder="title"
+                :hint="nestedParentHint(field)"
                 :rules="[(val) => !!val || 'Field is required']"
               />
 
@@ -83,7 +124,7 @@
                 placeholder=""
               />
               <q-input
-                v-if="field.type.startsWith('string')"
+                v-if="field.type?.startsWith('string')"
                 v-model="field.locale"
                 class="col-12 col-sm-2"
                 dense
@@ -134,28 +175,21 @@
       <q-btn size="md" padding="sm lg" unelevated color="primary" @click="addField()"
         >Add field</q-btn
       >
-      <q-btn
-        size="md"
-        padding="sm lg"
-        unelevated
-        color="primary"
-        @click="emit('submit', schema)"
-        >{{ primaryActionLabel }}</q-btn
-      >
+      <q-btn size="md" padding="sm lg" unelevated color="primary" @click="emit('submit', schema)">{{
+        primaryActionLabel
+      }}</q-btn>
     </q-card-actions>
   </q-card>
 </template>
 
 <script setup lang="ts">
-import type {
-  CollectionFieldSchema,
-  CollectionSchema,
-} from 'typesense/lib/Typesense/Collection';
+import type { CollectionFieldSchema, CollectionSchema } from 'typesense/lib/Typesense/Collection';
 import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
 import { computed, ref, watch } from 'vue';
 import type { PropType } from 'vue';
 import { useNodeStore } from '@/stores/node';
 import MonacoEditor from '../MonacoEditor.vue';
+import { isObjectType } from '@/shared/schemaDiff';
 
 interface Props {
   initialSchema?: CollectionCreateSchema | CollectionSchema;
@@ -211,8 +245,7 @@ const types = [
 const availableSortFields = computed(() => {
   const compatibleFields = schema.value.fields.filter(
     (field) =>
-      ['int32', 'int64', 'float'].includes(field.type) ||
-      (field.type === 'string' && field.sort),
+      ['int32', 'int64', 'float'].includes(field.type) || (field.type === 'string' && field.sort),
   );
   return [''].concat(compatibleFields.map((field) => field.name));
 });
@@ -280,6 +313,14 @@ function addField() {
 function removeField(field: CollectionFieldSchema) {
   const index = schema.value.fields.indexOf(field);
   if (index > -1) schema.value.fields.splice(index, 1);
+}
+
+function nestedParentHint(field: CollectionFieldSchema) {
+  const name = field.name ?? '';
+  const parent = schema.value.fields.find(
+    (f) => f !== field && isObjectType(f.type) && name.startsWith(`${f.name}.`),
+  );
+  return parent ? `Nested sub-field of ${parent.name}` : undefined;
 }
 
 function getStemDictionaryValue(field: CollectionFieldSchema) {

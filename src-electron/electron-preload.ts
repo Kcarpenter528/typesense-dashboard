@@ -79,6 +79,7 @@ const apiMethods = [
   'deleteCurationSet',
   'deleteDocumentById',
   'importDocuments',
+  'importDocumentsJsonl',
   'exportDocuments',
   'search',
   'get',
