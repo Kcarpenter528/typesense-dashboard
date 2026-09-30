@@ -122,6 +122,18 @@ function isValidMetricsPayload(payload: unknown): payload is Record<string, unkn
   return keys.some((k) => k.startsWith('system_') || k.startsWith('typesense_'));
 }
 
+export interface NodeStatus {
+  state: string;
+  committed_index?: number;
+  queued_writes?: number;
+}
+
+export interface SchemaChangeStatus {
+  collection: string;
+  validated_docs?: number;
+  altered_docs?: number;
+}
+
 export interface ImportFailure {
   line: number;
   error: string;
@@ -1115,24 +1127,43 @@ export const useNodeStore = defineStore('node', {
         this.setError((error as Error).message);
       }
     },
-    async slowQueryThreshold(payload: number) {
+    /**
+     * Changes a setting on the running node via `POST /config`. The change applies to
+     * this node only and is lost when it restarts. Resolves with an error message, or null.
+     */
+    async setRuntimeConfig(key: string, value: number | boolean): Promise<string | null> {
       try {
-        this.setError(null);
-        const response = await this.api?.post('/config', {
-          'log-slow-requests-time-ms': payload,
-        });
-        if (response.data?.success) {
-          Notify.create({
-            position: 'top',
-            progress: true,
-            group: false,
-            timeout: 1000,
-            color: 'positive',
-            message: `Set Slow Request Threshold to: ${payload}`,
-          });
-        }
+        const response = await this.api?.post('/config', { [key]: value });
+        return response?.data?.success ? null : 'The server did not confirm the change';
+      } catch (error) {
+        return (error as Error).message;
+      }
+    },
+    /** Raft state of this node (undocumented endpoint; null when unavailable). */
+    async getNodeStatus(): Promise<NodeStatus | null> {
+      try {
+        return ((await this.api?.get('/status'))?.data as NodeStatus | undefined) ?? null;
+      } catch {
+        return null;
+      }
+    },
+    /** Schema changes still being applied (undocumented endpoint; null when unavailable). */
+    async getSchemaChanges(): Promise<SchemaChangeStatus[] | null> {
+      try {
+        const data: unknown = (await this.api?.get('/operations/schema_changes'))?.data;
+        return Array.isArray(data) ? (data as SchemaChangeStatus[]) : [];
+      } catch {
+        return null;
+      }
+    },
+    /** Asks this node to give up leadership so the cluster elects a new leader. */
+    async triggerLeaderElection(): Promise<boolean> {
+      try {
+        const response = await this.api?.post('/operations/vote');
+        return response?.data?.success === true;
       } catch (error) {
         this.setError((error as Error).message);
+        return false;
       }
     },
     async createSnapshot(snapshotPath: string) {
