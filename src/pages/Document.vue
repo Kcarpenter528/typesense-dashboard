@@ -43,7 +43,10 @@
 
       <aside class="side">
         <div class="ts-sheet side-card">
-          <div class="ts-eyebrow q-mb-sm">When a document's id already exists</div>
+          <div class="ts-eyebrow q-mb-sm row items-center no-wrap">
+            When a document's id already exists
+            <help-tip topic="documents.action" class="q-ml-xs" />
+          </div>
           <div class="modes">
             <label
               v-for="mode in MODES"
@@ -112,9 +115,12 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import { computed, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
+import { useDocumentsStore } from '@/stores/documents';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import { buildDocumentTemplate } from '@/shared/documentTemplate';
 
@@ -127,6 +133,8 @@ interface ImportResult {
 }
 
 const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
+const documentsStore = useDocumentsStore();
 const route = useRoute();
 const fileInput = ref<HTMLInputElement | null>(null);
 
@@ -187,7 +195,7 @@ const documentsJson = computed({
 });
 
 function template() {
-  return buildDocumentTemplate(store.currentCollection?.fields ?? []);
+  return buildDocumentTemplate(collectionsStore.currentCollection?.fields ?? []);
 }
 
 function addTemplate() {
@@ -195,7 +203,7 @@ function addTemplate() {
 }
 
 watch(
-  () => store.currentCollection?.name,
+  () => collectionsStore.currentCollection?.name,
   () => {
     state.documents = [template()];
     state.results = null;
@@ -204,12 +212,12 @@ watch(
 );
 
 watch(
-  () => store.documentsToEdit,
+  () => documentsStore.documentsToEdit,
   (docs) => {
     if (docs && docs.length > 0) {
       state.documents = docs;
       state.action = 'upsert';
-      store.setDocumentsToEdit([]);
+      documentsStore.setDocumentsToEdit([]);
     }
   },
   { immediate: true },
@@ -237,13 +245,13 @@ function toResults(raw: unknown): ImportResult[] {
 async function importFromEditor() {
   state.importing = true;
   try {
-    const raw = await store.importDocuments({
+    const raw = await documentsStore.importDocuments({
       action: state.action,
       documents: JSON.parse(JSON.stringify(state.documents)),
     });
     state.results = toResults(raw);
     state.resultSource = 'From the editor';
-    void store.refreshCollection(collectionName.value);
+    void collectionsStore.refreshCollection(collectionName.value);
   } catch (error) {
     state.results = [{ line: 1, success: false, error: (error as Error).message }];
   } finally {
@@ -266,7 +274,7 @@ async function importFile(event: Event) {
     const raw = await store.api?.importDocumentsJsonl(collectionName.value, text, state.action);
     state.results = toResults(raw);
     state.resultSource = file.name;
-    void store.refreshCollection(collectionName.value);
+    void collectionsStore.refreshCollection(collectionName.value);
   } catch (error) {
     state.results = [
       { line: 1, success: false, error: `${file.name}: ${(error as Error).message}` },

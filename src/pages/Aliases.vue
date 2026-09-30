@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="aliases"
       title="Aliases"
       description="An alias is a second name for a collection. Point your app at the alias, then switch it to a new collection without changing code."
     >
@@ -19,7 +20,7 @@
       flat
       bordered
       :filter="state.filter"
-      :rows="store.data.aliases"
+      :rows="aliasesStore.aliases"
       :columns="columns"
       row-key="name"
       :pagination="{ rowsPerPage: 50, sortBy: 'name' }"
@@ -140,12 +141,16 @@ import { useQuasar } from 'quasar';
 import type { QTableProps } from 'quasar';
 import type { CollectionAliasSchema } from 'typesense/lib/Typesense/Aliases';
 import { useNodeStore } from '@/stores/node';
+import { useAliasesStore } from '@/stores/aliases';
+import { useCollectionsStore } from '@/stores/collections';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import SideSheet from '@/components/ui/SideSheet.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 
 const $q = useQuasar();
 const store = useNodeStore();
+const aliasesStore = useAliasesStore();
+const collectionsStore = useCollectionsStore();
 
 const state = reactive({
   alias: { name: '', collection_name: '' },
@@ -167,9 +172,9 @@ const columns: QTableProps['columns'] = [
 ];
 
 const collectionNames = computed(() =>
-  store.data.collections.map((collection) => collection.name).sort(),
+  collectionsStore.collections.map((collection) => collection.name).sort(),
 );
-const isUpdate = computed(() => store.data.aliases.some((a) => a.name === state.alias.name));
+const isUpdate = computed(() => aliasesStore.aliases.some((a) => a.name === state.alias.name));
 
 function newAlias() {
   state.alias = { name: '', collection_name: '' };
@@ -185,7 +190,7 @@ function editAlias(alias: CollectionAliasSchema) {
 
 async function saveAlias() {
   const saved = isUpdate.value ? 'Alias updated' : 'Alias created';
-  await store.createAlias({ ...state.alias });
+  await aliasesStore.upsert({ ...state.alias });
   if (!store.error) {
     state.sheetOpen = false;
     $q.notify({ type: 'positive', message: saved, position: 'top', timeout: 1500 });
@@ -199,11 +204,11 @@ function deleteAlias(name: string) {
     cancel: { flat: true, noCaps: true, label: 'Cancel' },
     ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete alias' },
   }).onOk(() => {
-    void store.deleteAlias(name);
+    void aliasesStore.remove(name);
   });
 }
 
 onMounted(() => {
-  void store.getAliases();
+  void aliasesStore.load();
 });
 </script>

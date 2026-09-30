@@ -7,7 +7,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useQuasar } from 'quasar';
-import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
 import CollectionUi from '@/components/collection/CollectionUi.vue';
 import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
 import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
@@ -15,10 +15,10 @@ import SchemaChangeDialog from '@/components/collection/SchemaChangeDialog.vue';
 import { diffSchema } from '@/shared/schemaDiff';
 
 const $q = useQuasar();
-const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
 
 const schema = computed<CollectionSchema | CollectionCreateSchema>(() => {
-  const collection = store.currentCollection;
+  const collection = collectionsStore.currentCollection;
   if (collection) {
     const schema: any = {
       name: collection.name,
@@ -56,7 +56,7 @@ const schema = computed<CollectionSchema | CollectionCreateSchema>(() => {
 });
 
 function update(editedSchema: CollectionCreateSchema) {
-  const collection = store.currentCollection;
+  const collection = collectionsStore.currentCollection;
   if (!collection) return;
 
   const plan = diffSchema(collection, editedSchema);

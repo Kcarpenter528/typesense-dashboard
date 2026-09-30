@@ -68,6 +68,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
 import { collectionTabs, fuzzyMatch, NAV_SECTIONS } from '@/shared/navigation';
 
 interface Entry {
@@ -90,6 +91,7 @@ defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>();
 
 const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
 const router = useRouter();
 const input = ref<HTMLInputElement | null>(null);
 const query = ref('');
@@ -108,7 +110,7 @@ const entries = computed<Entry[]>(() => {
         hint: section.label,
       })),
   );
-  const collections = store.data.collections
+  const collections = collectionsStore.collections
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name))
     .flatMap((c) => {

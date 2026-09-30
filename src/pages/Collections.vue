@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="collections"
       title="Collections"
       description="A collection holds documents that share a schema. Open one to search it, change its fields or add documents."
     >
@@ -20,7 +21,7 @@
       bordered
       :filter="state.filter"
       :columns="columns"
-      :rows="store.data.collections"
+      :rows="collectionsStore.collections"
       row-key="name"
       :pagination="{ rowsPerPage: 50, sortBy: 'name' }"
       :rows-per-page-options="[25, 50, 100, 0]"
@@ -110,6 +111,27 @@
                 <q-item
                   v-close-popup
                   clickable
+                  @click="actions.deleteDocuments(props.row.name, 'filter')"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="sym_s_filter_alt_off" size="18px" />
+                  </q-item-section>
+                  <q-item-section>Delete documents by filter…</q-item-section>
+                </q-item>
+                <q-item
+                  v-close-popup
+                  clickable
+                  :disable="!props.row.num_documents"
+                  @click="actions.deleteDocuments(props.row.name, 'all')"
+                >
+                  <q-item-section avatar>
+                    <q-icon name="sym_s_delete_sweep" size="18px" />
+                  </q-item-section>
+                  <q-item-section>Delete all documents…</q-item-section>
+                </q-item>
+                <q-item
+                  v-close-popup
+                  clickable
                   class="text-negative"
                   @click="actions.deleteCollection(props.row.name)"
                 >
@@ -164,6 +186,8 @@ import type { QTableProps } from 'quasar';
 import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
 import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
 import { useNodeStore } from '@/stores/node';
+import { useAliasesStore } from '@/stores/aliases';
+import { useCollectionsStore } from '@/stores/collections';
 import { buildCreateSchema, isObjectType } from '@/shared/schemaDiff';
 import { useCollectionActions } from '@/shared/useCollectionActions';
 import PageHeader from '@/components/ui/PageHeader.vue';
@@ -172,6 +196,8 @@ import EmptyState from '@/components/ui/EmptyState.vue';
 import CollectionUi from '@/components/collection/CollectionUi.vue';
 
 const store = useNodeStore();
+const aliasesStore = useAliasesStore();
+const collectionsStore = useCollectionsStore();
 const actions = useCollectionActions();
 
 const state = reactive({ filter: '', createOpen: false });
@@ -214,17 +240,19 @@ const columns: QTableProps['columns'] = [
 ];
 
 function aliasesFor(name: string) {
-  return store.data.aliases.filter((a) => a.collection_name === name).map((a) => a.name);
+  return aliasesStore.aliases.filter((a) => a.collection_name === name).map((a) => a.name);
 }
 
 async function createCollection(schema: CollectionCreateSchema) {
-  await store.createCollection(buildCreateSchema(schema, schema.name) as CollectionSchema);
+  await collectionsStore.createCollection(
+    buildCreateSchema(schema, schema.name) as CollectionSchema,
+  );
   if (!store.error) state.createOpen = false;
 }
 
 onMounted(() => {
-  void store.getCollections();
-  void store.getAliases();
+  void collectionsStore.getCollections();
+  void aliasesStore.load();
 });
 </script>
 

@@ -31,7 +31,11 @@
               placeholder="books"
               :disable="!createMode"
               :rules="[(val) => !!val || 'Enter a name']"
-            />
+            >
+              <template #append>
+                <help-tip topic="collection.name" />
+              </template>
+            </q-input>
             <q-select
               v-model="schema.default_sorting_field"
               outlined
@@ -41,14 +45,19 @@
               label="Default sort field"
               hint="Optional. A numeric field used when a search doesn't sort."
             >
+              <template #append>
+                <help-tip topic="collection.default_sorting_field" />
+              </template>
             </q-select>
           </div>
           <div class="row q-gutter-md items-start q-pt-sm">
-            <q-toggle
-              v-model="schema.enable_nested_fields"
-              class="col-12 col-md-auto"
-              label="Enable nested fields (object / object[])"
-            />
+            <div class="col-12 col-md-auto row no-wrap items-center">
+              <q-toggle
+                v-model="schema.enable_nested_fields"
+                label="Enable nested fields (object / object[])"
+              />
+              <help-tip topic="collection.enable_nested_fields" />
+            </div>
             <q-select
               v-model="schema.token_separators"
               class="col"
@@ -62,7 +71,11 @@
               input-debounce="0"
               label="Token separators"
               hint="Characters that split words, e.g. - or /"
-            />
+            >
+              <template #append>
+                <help-tip topic="collection.token_separators" />
+              </template>
+            </q-select>
             <q-select
               v-model="schema.symbols_to_index"
               class="col"
@@ -76,7 +89,11 @@
               input-debounce="0"
               label="Symbols to index"
               hint="Special characters to keep, e.g. + or #"
-            />
+            >
+              <template #append>
+                <help-tip topic="collection.symbols_to_index" />
+              </template>
+            </q-select>
           </div>
           <div v-if="!createMode" class="text-caption text-grey-7 q-pt-md">
             <q-icon name="sym_s_lock" /> Default sort field, nested fields, token separators and
@@ -92,6 +109,15 @@
             label="Metadata"
             :caption="metadataCaption"
           >
+            <template #header>
+              <q-item-section>
+                <q-item-label>Metadata</q-item-label>
+                <q-item-label caption>{{ metadataCaption }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <help-tip topic="collection.metadata" />
+              </q-item-section>
+            </template>
             <q-input
               v-model="metadataText"
               type="textarea"
@@ -104,7 +130,9 @@
               :error-message="metadataError ?? undefined"
             />
           </q-expansion-item>
-          <div class="text-subtitle1 q-pt-md">Fields</div>
+          <div class="text-subtitle1 q-pt-md row items-center">
+            Fields <help-tip topic="field.type" class="q-ml-xs" />
+          </div>
           <field-editor
             v-for="field in schema.fields"
             :key="fieldKey(field)"
@@ -136,11 +164,13 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import type { CollectionFieldSchema, CollectionSchema } from 'typesense/lib/Typesense/Collection';
 import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
 import { computed, ref, watch } from 'vue';
 import type { PropType } from 'vue';
-import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
+import { useStemmingStore } from '@/stores/stemming';
 import MonacoEditor from '../MonacoEditor.vue';
 import FieldEditor from './FieldEditor.vue';
 import { isObjectType } from '@/shared/schemaDiff';
@@ -170,7 +200,8 @@ const emit = defineEmits<{
   submit: [schema: CollectionCreateSchema];
 }>();
 
-const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
+const stemmingStore = useStemmingStore();
 const tab = ref<'form' | 'json'>('form');
 const schema = ref<CollectionCreateSchema>(createDefaultSchema());
 const jsonError = ref<string | null>(null);
@@ -185,7 +216,7 @@ const availableSortFields = computed(() => {
 
 /** `collection.field` targets for reference fields, from the other collections on the server. */
 const referenceOptions = computed(() =>
-  store.data.collections
+  collectionsStore.collections
     .filter((c) => c.name !== schema.value.name)
     .flatMap((c) => [
       `${c.name}.id`,
@@ -230,7 +261,7 @@ function syncMetadataText() {
 }
 
 const stemmingDictionaryOptions = computed(() => {
-  return ['default'].concat(store.data.stemmingDictionaries || []);
+  return ['default'].concat(stemmingStore.dictionaries || []);
 });
 
 const schemaJson = computed({

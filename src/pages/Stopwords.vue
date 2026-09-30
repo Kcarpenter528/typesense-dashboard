@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="stopwords"
       title="Stopwords"
       description="Stopwords are common words such as the, a or of that searches can ignore. Use a set with the stopwords search parameter."
     >
@@ -13,7 +14,7 @@
       bordered
       wrap-cells
       :filter="state.filter"
-      :rows="store.data.stopwords"
+      :rows="stopwordsStore.stopwords"
       :columns="columns"
       row-key="id"
       :pagination="{ rowsPerPage: 25, sortBy: 'id' }"
@@ -112,7 +113,11 @@
           label="Locale"
           placeholder="en"
           hint="Language code of the words, for correct tokenizing."
-        />
+        >
+          <template #append>
+            <help-tip topic="stopwords.locale" />
+          </template>
+        </q-input>
         <q-select
           v-model="state.set.stopwords"
           outlined
@@ -144,11 +149,13 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import { onMounted, reactive } from 'vue';
 import { useQuasar } from 'quasar';
 import type { QTableProps } from 'quasar';
 import type { StopwordSchema } from 'typesense/lib/Typesense/Stopword';
 import { useNodeStore } from '@/stores/node';
+import { useStopwordsStore } from '@/stores/stopwords';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import SideSheet from '@/components/ui/SideSheet.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
@@ -161,6 +168,7 @@ interface StopwordDraft {
 
 const $q = useQuasar();
 const store = useNodeStore();
+const stopwordsStore = useStopwordsStore();
 
 const state = reactive<{
   set: StopwordDraft;
@@ -227,7 +235,7 @@ function editSet(set: StopwordSchema) {
 
 async function saveSet() {
   const message = state.editing ? 'Stopword set saved' : 'Stopword set created';
-  await store.upsertStopwords(JSON.parse(JSON.stringify(state.set)));
+  await stopwordsStore.upsert(JSON.parse(JSON.stringify(state.set)));
   if (!store.error) {
     state.sheetOpen = false;
     $q.notify({ type: 'positive', message, position: 'top', timeout: 1500 });
@@ -241,12 +249,12 @@ function deleteSet(id: string) {
     cancel: { flat: true, noCaps: true, label: 'Cancel' },
     ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete set' },
   }).onOk(() => {
-    void store.deleteStopwords(id);
+    void stopwordsStore.remove(id);
   });
 }
 
 onMounted(() => {
-  void store.getStopwords();
+  void stopwordsStore.load();
 });
 </script>
 

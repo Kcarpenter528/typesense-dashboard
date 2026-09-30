@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="stemming"
       title="Stemming"
       description="A stemming dictionary maps words to their root, such as people → person, so a search for one finds the other. Attach it to a field with stem_dictionary in the schema."
     >
@@ -215,6 +216,8 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import type { QTableProps } from 'quasar';
 import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
+import { useStemmingStore } from '@/stores/stemming';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import SideSheet from '@/components/ui/SideSheet.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
@@ -226,6 +229,8 @@ interface Pair {
 
 const $q = useQuasar();
 const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
+const stemmingStore = useStemmingStore();
 const fileInput = ref<HTMLInputElement | null>(null);
 
 /** Rendering thousands of inputs is slow; long dictionaries show a window. */
@@ -254,9 +259,9 @@ const state = reactive<{
 });
 
 const rows = computed(() =>
-  store.data.stemmingDictionaries.map((id) => ({
+  stemmingStore.dictionaries.map((id) => ({
     id,
-    usedBy: store.data.collections.flatMap((c) =>
+    usedBy: collectionsStore.collections.flatMap((c) =>
       (c.fields ?? []).filter((f) => f.stem_dictionary === id).map((f) => `${c.name}.${f.name}`),
     ),
   })),
@@ -291,7 +296,7 @@ function newDictionary() {
 }
 
 async function editDictionary(id: string) {
-  const dictionary = (await store.getStemmingDictionary(id)) as { words?: Pair[] } | undefined;
+  const dictionary = (await stemmingStore.get(id)) as { words?: Pair[] } | undefined;
   state.id = id;
   state.pairs = (dictionary?.words ?? []).map((w) => ({ word: w.word, root: w.root }));
   state.original = cleanPairs(state.pairs);
@@ -336,7 +341,7 @@ async function importFile(event: Event) {
 }
 
 async function upload(pairs: Pair[]) {
-  await store.upsertStemmingDictionaries({ id: state.id, words: pairs });
+  await stemmingStore.upsert({ id: state.id, words: pairs });
   return !store.error;
 }
 
@@ -354,7 +359,7 @@ async function saveDictionary() {
 
   const finish = async (rebuild: boolean) => {
     state.saving = true;
-    if (rebuild) await store.deleteStemmingDictionary(state.id);
+    if (rebuild) await stemmingStore.remove(state.id);
     const ok = await upload(pairs);
     state.saving = false;
     if (ok) {
@@ -391,12 +396,12 @@ function deleteDictionary(id: string) {
     cancel: { flat: true, noCaps: true, label: 'Cancel' },
     ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete dictionary' },
   }).onOk(() => {
-    void store.deleteStemmingDictionary(id);
+    void stemmingStore.remove(id);
   });
 }
 
 onMounted(() => {
-  void store.getStemmingDictionaries();
+  void stemmingStore.load();
 });
 </script>
 

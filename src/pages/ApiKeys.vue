@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="apiKeys"
       title="API keys"
       description="Give each app or service its own key with only the permissions it needs. A key's value is shown once, when it's created."
     >
@@ -12,7 +13,7 @@
       flat
       bordered
       :filter="state.filter"
-      :rows="store.data.apiKeys"
+      :rows="apiKeysStore.apiKeys"
       :columns="columns"
       row-key="id"
       :pagination="{ rowsPerPage: 25, sortBy: 'id' }"
@@ -152,7 +153,11 @@
           hint="documents:search is enough for searching. * allows everything."
           lazy-rules
           :rules="[(v) => (v && v.length > 0) || 'Choose at least one permission']"
-        />
+        >
+          <template #append>
+            <help-tip topic="apiKey.actions" />
+          </template>
+        </q-select>
         <q-select
           v-model="state.key.collections"
           outlined
@@ -166,7 +171,11 @@
           hint="Names, aliases or regular expressions such as orders_.*. * means every collection."
           lazy-rules
           :rules="[(v) => (v && v.length > 0) || 'Choose at least one collection']"
-        />
+        >
+          <template #append>
+            <help-tip topic="apiKey.collections" />
+          </template>
+        </q-select>
         <q-input
           v-model="state.expiresOn"
           outlined
@@ -175,7 +184,11 @@
           stack-label
           clearable
           hint="Leave empty for a key that never expires."
-        />
+        >
+          <template #append>
+            <help-tip topic="apiKey.expires_at" />
+          </template>
+        </q-input>
       </q-form>
 
       <q-expansion-item
@@ -192,16 +205,12 @@
         <div v-if="state.jsonError" class="text-negative text-caption q-mt-xs">
           {{ state.jsonError }}
         </div>
-        <q-btn
-          flat
-          dense
-          no-caps
-          color="primary"
-          icon="sym_s_open_in_new"
-          label="API key options in the Typesense docs"
+        <help-links
           class="q-mt-sm"
-          :href="`https://typesense.org/docs/${store.data.debug.version || store.data.defaultDocVersion}/api/api-keys.html#create-an-api-key`"
-          target="_blank"
+          :links="[
+            { kind: 'api', page: 'api-keys', anchor: 'arguments', label: 'API key options' },
+            { kind: 'api', page: 'api-keys', anchor: 'sample-actions', label: 'Permissions' },
+          ]"
         />
       </q-expansion-item>
 
@@ -242,18 +251,24 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
+import HelpLinks from '@/components/help/HelpLinks.vue';
 import { computed, onMounted, reactive } from 'vue';
 import { copyToClipboard, useQuasar } from 'quasar';
 import type { QTableProps } from 'quasar';
 import type { KeyCreateSchema, KeySchema } from 'typesense/lib/Typesense/Key';
-import { useNodeStore } from '@/stores/node';
+import { useAliasesStore } from '@/stores/aliases';
+import { useApiKeysStore } from '@/stores/apiKeys';
+import { useCollectionsStore } from '@/stores/collections';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import SideSheet from '@/components/ui/SideSheet.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 
 const $q = useQuasar();
-const store = useNodeStore();
+const aliasesStore = useAliasesStore();
+const apiKeysStore = useApiKeysStore();
+const collectionsStore = useCollectionsStore();
 
 /** Typesense's value for "never expires". */
 const NEVER = 64723363199;
@@ -353,8 +368,8 @@ const columns: QTableProps['columns'] = [
 
 const collectionOptions = computed(() => [
   '*',
-  ...store.data.aliases.map((a) => a.name),
-  ...store.data.collections.map((c) => c.name).sort(),
+  ...aliasesStore.aliases.map((a) => a.name),
+  ...collectionsStore.collections.map((c) => c.name).sort(),
 ]);
 
 const keyJson = computed({
@@ -407,7 +422,7 @@ async function createApiKey() {
   state.saving = true;
   let key: KeySchema | undefined;
   try {
-    key = await store.createApiKey(payload as KeySchema);
+    key = await apiKeysStore.create(payload as KeySchema);
   } catch {
     // The store shows the server's error message in the banner.
     return;
@@ -434,12 +449,12 @@ function deleteApiKey(key: KeySchema) {
     cancel: { flat: true, noCaps: true, label: 'Cancel' },
     ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete key' },
   }).onOk(() => {
-    void store.deleteApiKey(String(key.id));
+    void apiKeysStore.remove(String(key.id));
   });
 }
 
 onMounted(() => {
-  void store.getApiKeys();
+  void apiKeysStore.load();
 });
 </script>
 

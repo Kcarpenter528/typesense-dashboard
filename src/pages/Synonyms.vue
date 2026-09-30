@@ -2,6 +2,7 @@
   <q-page class="ts-page">
     <page-header
       v-if="setsMode"
+      help="synonyms"
       title="Synonyms"
       description="Synonyms let a search for one word find documents that use another. They live in sets; a collection uses the sets you link to it."
     />
@@ -28,7 +29,7 @@
 
     <template v-else-if="collectionName">
       <synonym-table
-        :rows="store.data.synonyms as SynonymItem[]"
+        :rows="synonymsStore.synonyms as SynonymItem[]"
         @create="openEditor()"
         @edit="openEditor($event)"
         @delete="removeItem"
@@ -52,7 +53,9 @@
     >
       <q-form id="synonym-form" class="column q-gutter-md" @submit="saveItem">
         <div>
-          <div class="ts-eyebrow q-mb-sm">How should the words match?</div>
+          <div class="ts-eyebrow q-mb-sm row items-center">
+            How should the words match? <help-tip topic="synonym.kind" class="q-ml-xs" />
+          </div>
           <div class="kinds">
             <button
               type="button"
@@ -121,7 +124,11 @@
               label="Locale"
               placeholder="en"
               hint="Leave empty to detect it."
-            />
+            >
+              <template #append>
+                <help-tip topic="synonym.locale" />
+              </template>
+            </q-input>
             <q-select
               v-model="editor.item.symbols_to_index"
               outlined
@@ -133,7 +140,11 @@
               input-debounce="0"
               label="Symbols to keep"
               hint="Characters such as + or # that are part of the words, as in c++."
-            />
+            >
+              <template #append>
+                <help-tip topic="synonym.symbols_to_index" />
+              </template>
+            </q-select>
           </div>
         </q-expansion-item>
       </q-form>
@@ -153,11 +164,13 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { nanoid } from 'nanoid';
 import { useNodeStore } from '@/stores/node';
+import { useSynonymsStore } from '@/stores/synonyms';
 import { useRuleSets } from '@/shared/useRuleSets';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import SideSheet from '@/components/ui/SideSheet.vue';
@@ -168,6 +181,7 @@ import type { SynonymItem } from '@/components/rules/SynonymTable.vue';
 
 const $q = useQuasar();
 const store = useNodeStore();
+const synonymsStore = useSynonymsStore();
 const route = useRoute();
 const ruleSets = useRuleSets('synonym');
 
@@ -219,7 +233,7 @@ async function saveItem() {
     ok = await ruleSets.saveItem(selectedSet.value, item);
   } else {
     const { id, ...synonym } = item;
-    await store.createSynonym({ id, synonym });
+    await synonymsStore.create({ id, synonym });
     ok = !store.error;
   }
   if (ok) {
@@ -244,13 +258,13 @@ function removeItem(item: SynonymItem) {
     ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete synonym' },
   }).onOk(() => {
     if (setsMode.value && selectedSet.value) void ruleSets.deleteItem(selectedSet.value, item.id);
-    else void store.deleteSynonym({ id: item.id });
+    else void synonymsStore.remove(item.id);
   });
 }
 
 function refresh() {
   if (setsMode.value) void ruleSets.load();
-  else if (collectionName.value) store.getSynonyms(collectionName.value);
+  else if (collectionName.value) synonymsStore.load(collectionName.value);
 }
 
 onMounted(refresh);

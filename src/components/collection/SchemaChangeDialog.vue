@@ -184,7 +184,8 @@ import { useDialogPluginComponent } from 'quasar';
 import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
 import type { SchemaChangePlan } from '@/shared/schemaDiff';
 import { useNodeStore } from '@/stores/node';
-import type { RecreateCollectionResult } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
+import type { RecreateCollectionResult } from '@/stores/collections';
 
 const props = defineProps<{
   plan: SchemaChangePlan;
@@ -197,6 +198,7 @@ defineEmits([...useDialogPluginComponent.emits]);
 
 const { dialogRef, onDialogHide, onDialogOK, onDialogCancel } = useDialogPluginComponent();
 const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
 
 const busy = ref(false);
 const keepBackup = ref(false);
@@ -225,7 +227,7 @@ async function apply() {
   errorMessage.value = null;
   try {
     if (props.plan.requiresRecreate) {
-      result.value = await store.recreateCollection({
+      result.value = await collectionsStore.recreateCollection({
         collectionName: props.collectionName,
         schema: props.editedSchema,
         keepBackup: keepBackup.value,
@@ -233,7 +235,7 @@ async function apply() {
       });
     } else if (props.plan.payload) {
       progressMessage.value = 'Updating schema';
-      const ok = await store.updateCollection({
+      const ok = await collectionsStore.updateCollection({
         collectionName: props.collectionName,
         schema: props.plan.payload,
       });

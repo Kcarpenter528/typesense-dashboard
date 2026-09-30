@@ -73,9 +73,10 @@
       >
         <div class="row q-col-gutter-md q-pb-md q-pt-sm">
           <div v-for="flag in flags" :key="flag.key" class="col-12 col-md-6">
-            <q-toggle v-if="flag.type === 'boolean'" v-model="values[flag.key]" :label="flag.label">
-              <q-tooltip max-width="260px">{{ flag.description }}</q-tooltip>
-            </q-toggle>
+            <div v-if="flag.type === 'boolean'" class="row no-wrap items-center">
+              <q-toggle v-model="values[flag.key]" :label="flag.label" />
+              <help-tip :topic="serverFlagTopic(flag)" />
+            </div>
             <q-input
               v-else
               :model-value="inputValue(flag)"
@@ -87,7 +88,9 @@
               :suffix="'unit' in flag ? flag.unit : undefined"
               :hint="flag.description"
               @update:model-value="setValue(flag, $event)"
-            />
+            >
+              <template #append><help-tip :topic="serverFlagTopic(flag)" /></template>
+            </q-input>
           </div>
         </div>
       </q-expansion-item>
@@ -186,6 +189,8 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
+import { serverFlagTopic } from '@/shared/help';
 import { computed, reactive, ref, watch } from 'vue';
 import { copyToClipboard, useQuasar } from 'quasar';
 import { useNodeStore } from '@/stores/node';

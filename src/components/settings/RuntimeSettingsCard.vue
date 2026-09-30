@@ -28,6 +28,7 @@
             <div class="text-body2 text-weight-medium">
               {{ setting.label }}
               <code class="text-caption text-grey-7 q-ml-xs">{{ setting.key }}</code>
+              <help-tip :topic="serverFlagTopic(setting, true)" />
             </div>
             <div class="text-caption text-grey-8">{{ setting.description }}</div>
             <div class="text-caption text-grey-7">
@@ -88,15 +89,17 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
+import { serverFlagTopic } from '@/shared/help';
 import { computed, reactive } from 'vue';
 import { useQuasar } from 'quasar';
-import { useNodeStore } from '@/stores/node';
+import { useOperationsStore } from '@/stores/operations';
 import { groupBy, RUNTIME_SETTINGS, validateRuntimeValue } from '@/shared/serverConfig';
 import type { RuntimeSetting } from '@/shared/serverConfig';
 import { useRuntimeHistory } from '@/shared/useRuntimeHistory';
 
 const $q = useQuasar();
-const store = useNodeStore();
+const operationsStore = useOperationsStore();
 const { applied, record } = useRuntimeHistory();
 
 const groups = groupBy(RUNTIME_SETTINGS);
@@ -155,7 +158,7 @@ function apply(setting: RuntimeSetting) {
 
 async function send(setting: RuntimeSetting, value: number | boolean) {
   saving[setting.key] = true;
-  const error = await store.setRuntimeConfig(setting.key, value);
+  const error = await operationsStore.setRuntimeConfig(setting.key, value);
   saving[setting.key] = false;
   if (error) {
     $q.notify({ type: 'negative', position: 'top', message: `${setting.label}: ${error}` });

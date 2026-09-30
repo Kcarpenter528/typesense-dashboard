@@ -23,6 +23,11 @@ import type {
   CurationObjectSchema,
   CurationSetUpsertSchema,
 } from 'typesense/lib/Typesense/CurationSets';
+import type {
+  NLSearchModelBase,
+  NLSearchModelCreateSchema,
+} from 'typesense/lib/Typesense/NLSearchModels';
+import type { ConversationModelCreateSchema } from 'typesense/lib/Typesense/ConversationModel';
 
 export class Api {
   public axiosClient?: AxiosInstance;
@@ -293,6 +298,68 @@ export class Api {
 
   public deleteCurationSet(name: string) {
     return this.typesenseClient?.curationSets(name).delete();
+  }
+
+  /** Deletes the documents matching a filter; resolves with `{ num_deleted }`. */
+  public deleteDocumentsByFilter(collectionName: string, filterBy: string, batchSize?: number) {
+    return this.typesenseClient
+      ?.collections(collectionName)
+      .documents()
+      .delete({ filter_by: filterBy, ...(batchSize ? { batch_size: batchSize } : {}) });
+  }
+
+  /** Deletes every document but keeps the collection and its schema. */
+  public truncateCollection(collectionName: string) {
+    return this.typesenseClient?.collections(collectionName).documents().delete({ truncate: true });
+  }
+
+  // Natural-language search models (v29+)
+  public getNlSearchModels() {
+    return this.typesenseClient?.nlSearchModels().retrieve();
+  }
+
+  public createNlSearchModel(model: NLSearchModelCreateSchema) {
+    return this.typesenseClient?.nlSearchModels().create(model);
+  }
+
+  public updateNlSearchModel(id: string, model: NLSearchModelBase) {
+    return this.typesenseClient?.nlSearchModels(id).update(model);
+  }
+
+  public deleteNlSearchModel(id: string) {
+    return this.typesenseClient?.nlSearchModels(id).delete();
+  }
+
+  // Conversation models for conversational search (RAG)
+  public getConversationModels() {
+    return this.typesenseClient?.conversations().models().retrieve();
+  }
+
+  public createConversationModel(model: ConversationModelCreateSchema) {
+    return this.typesenseClient?.conversations().models().create(model);
+  }
+
+  public updateConversationModel(id: string, model: ConversationModelCreateSchema) {
+    return this.typesenseClient?.conversations().models(id).update(model);
+  }
+
+  public deleteConversationModel(id: string) {
+    return this.typesenseClient?.conversations().models(id).delete();
+  }
+
+  /**
+   * Runs one search through `/multi_search`, which conversational search requires.
+   * `commonParams` go in the query string (`conversation`, `conversation_model_id`, …).
+   */
+  public multiSearch(
+    collectionName: string,
+    searchParameters: Record<string, unknown>,
+    commonParams: Record<string, unknown>,
+  ) {
+    return this.typesenseClient?.multiSearch.perform(
+      { searches: [{ collection: collectionName, ...searchParameters }] },
+      commonParams,
+    );
   }
 
   public createSnapshot(snapshotPath: string) {

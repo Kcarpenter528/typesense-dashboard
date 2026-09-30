@@ -20,7 +20,7 @@
             <q-icon :name="item.icon" size="20px" class="nav__icon" />
             <span class="nav__label">{{ item.label }}</span>
             <span v-if="item.to === '/collections'" class="nav__count">
-              {{ store.data.collections.length }}
+              {{ collectionsStore.collections.length }}
             </span>
           </a>
         </router-link>
@@ -34,11 +34,13 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
 import { NAV_SECTIONS } from '@/shared/navigation';
 import type { NavItem } from '@/shared/navigation';
 import ProjectInfo from './ProjectInfo.vue';
 
 const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
 const route = useRoute();
 
 const sections = computed(() =>

@@ -157,7 +157,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
 import type { RuleSetKind, useRuleSets } from '@/shared/useRuleSets';
 import EmptyState from '@/components/ui/EmptyState.vue';
 
@@ -174,13 +174,13 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:selected': [name: string | null] }>();
 
 const $q = useQuasar();
-const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
 
 const setsLabel = computed(() => (props.kind === 'synonym' ? 'Synonym sets' : 'Curation sets'));
 const current = computed(() => props.ruleSets.sets.value.find((s) => s.name === props.selected));
 
 const collectionOptions = computed(() =>
-  store.data.collections
+  collectionsStore.collections
     .map((c) => c.name)
     .sort()
     .map((name) => ({ label: name, value: name })),

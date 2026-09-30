@@ -52,7 +52,11 @@
               label="API key"
               autocomplete="current-password"
               hint="An admin key shows every page. A scoped key shows what it's allowed to see."
-            />
+            >
+              <template #append>
+                <help-tip topic="login.api_key" />
+              </template>
+            </q-input>
             <q-expansion-item
               v-model="showAdvancedSettings"
               dense
@@ -67,7 +71,11 @@
                   label="Path"
                   placeholder="/typesense"
                   hint="Only when Typesense is behind a proxy under a sub-path."
-                />
+                >
+                  <template #append>
+                    <help-tip topic="login.path" />
+                  </template>
+                </q-input>
                 <q-input
                   v-model.number="connectionTimeoutSeconds"
                   outlined
@@ -111,6 +119,7 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import ServerHistory from '@/components/ServerHistory.vue';
 import { useNodeStore } from '@/stores/node';
 import { onMounted, ref } from 'vue';

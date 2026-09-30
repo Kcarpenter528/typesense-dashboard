@@ -1,6 +1,6 @@
 <template>
   <q-page class="ts-page">
-    <page-header title="Server status">
+    <page-header help="status" title="Server status">
       <template #description>
         <span class="health" :class="healthClass">
           <span class="health__dot" aria-hidden="true" />
@@ -14,11 +14,11 @@
     </page-header>
 
     <div class="kpis">
-      <stat-tile label="Collections" :value="compact(store.data.collections.length)" />
+      <stat-tile label="Collections" :value="compact(collectionsStore.collections.length)" />
       <stat-tile
         label="Documents"
         :value="compact(totalDocuments)"
-        :detail="`across ${store.data.collections.length} collections`"
+        :detail="`across ${collectionsStore.collections.length} collections`"
       />
       <stat-tile
         label="Requests per second"
@@ -174,6 +174,7 @@
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import prettyBytes from 'pretty-bytes';
 import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
 import type { NodeLoginDataInterface } from '@/stores/node';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import StatTile from '@/components/ui/StatTile.vue';
@@ -189,6 +190,7 @@ interface Stats {
 }
 
 const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
 let refreshInterval: number | undefined;
 
 const metrics = computed(() => store.data.metrics as Record<string, unknown>);
@@ -263,7 +265,7 @@ const endpoints = computed(() => {
 });
 
 const totalDocuments = computed(() =>
-  store.data.collections.reduce((sum, c) => sum + (c.num_documents ?? 0), 0),
+  collectionsStore.collections.reduce((sum, c) => sum + (c.num_documents ?? 0), 0),
 );
 
 const healthClass = computed(() => {

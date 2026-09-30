@@ -10,7 +10,11 @@
         placeholder="title"
         :hint="nestedParentHint"
         :rules="[(val) => !!val || 'Field name is required']"
-      />
+      >
+        <template #append>
+          <help-tip topic="field.name" />
+        </template>
+      </q-input>
       <q-select
         :model-value="field.type"
         class="col-10 col-sm-5"
@@ -23,6 +27,9 @@
         :rules="[(val) => !!val || 'Type is required']"
         @update:model-value="changeType"
       >
+        <template #append>
+          <help-tip topic="field.type" />
+        </template>
         <template #option="scope">
           <q-item v-bind="scope.itemProps">
             <q-item-section>
@@ -47,17 +54,19 @@
     </q-card-section>
 
     <q-card-section class="row items-center q-py-xs">
-      <q-checkbox
+      <span
         v-for="flag in availableFlags"
         :key="flag.key"
-        dense
-        class="q-mr-md q-my-xs"
-        :model-value="flagValue(flag.key)"
-        :label="flag.label"
-        @update:model-value="setFlag(flag.key, $event)"
+        class="flag row inline no-wrap items-center q-mr-md q-my-xs"
       >
-        <q-tooltip :delay="400" max-width="260px">{{ flag.help }}</q-tooltip>
-      </q-checkbox>
+        <q-checkbox
+          dense
+          :model-value="flagValue(flag.key)"
+          :label="flag.label"
+          @update:model-value="setFlag(flag.key, $event)"
+        />
+        <help-tip :topic="`field.${flag.key}`" />
+      </span>
       <q-select
         v-if="field.stem"
         :model-value="field.stem_dictionary || 'default'"
@@ -68,7 +77,11 @@
         class="q-my-xs"
         style="min-width: 200px"
         @update:model-value="field.stem_dictionary = $event === 'default' ? '' : $event"
-      />
+      >
+        <template #append>
+          <help-tip topic="field.stem_dictionary" />
+        </template>
+      </q-select>
     </q-card-section>
 
     <q-expansion-item
@@ -93,7 +106,11 @@
               label="Locale"
               placeholder="en"
               hint="ISO 639-1 code, e.g. fr, ja, th"
-            />
+            >
+              <template #append>
+                <help-tip topic="field.locale" />
+              </template>
+            </q-input>
             <q-input
               :model-value="field.truncate_len"
               class="col-6 col-md-3"
@@ -104,21 +121,33 @@
               placeholder="100"
               hint="Characters indexed per word"
               @update:model-value="setNumber('truncate_len', $event)"
-            />
+            >
+              <template #append>
+                <help-tip topic="field.truncate_len" />
+              </template>
+            </q-input>
             <q-select
               v-model="field.token_separators"
               class="col-12 col-md-3"
               v-bind="chipInputProps"
               label="Token separators"
               hint="Split words on these, for this field"
-            />
+            >
+              <template #append>
+                <help-tip topic="field.token_separators" />
+              </template>
+            </q-select>
             <q-select
               v-model="field.symbols_to_index"
               class="col-12 col-md-3"
               v-bind="chipInputProps"
               label="Symbols to index"
               hint="Keep these characters, for this field"
-            />
+            >
+              <template #append>
+                <help-tip topic="field.symbols_to_index" />
+              </template>
+            </q-select>
           </div>
         </template>
 
@@ -144,37 +173,37 @@
               @filter="filterReferences"
               @input-value="(val: string) => setReference(val)"
               @update:model-value="setReference"
-            />
+            >
+              <template #append>
+                <help-tip topic="field.reference" />
+              </template>
+            </q-select>
             <template v-if="field.reference">
-              <q-checkbox
-                :model-value="field.async_reference === true"
-                class="col-12 col-md-3"
-                label="Async reference"
-                @update:model-value="field.async_reference = $event"
-              >
-                <q-tooltip max-width="260px">
-                  Index documents even if the referenced document does not exist yet. Requires the
-                  field to be optional.
-                </q-tooltip>
-              </q-checkbox>
-              <q-checkbox
-                :model-value="field.cascade_delete !== false"
-                class="col-12 col-md-3"
-                label="Cascade delete"
-                :disable="!field.async_reference && field.cascade_delete !== false"
-                @update:model-value="field.cascade_delete = $event"
-              >
-                <q-tooltip max-width="260px">
-                  Delete this document when all referenced documents are deleted. Turning this off
-                  requires an async reference.
-                </q-tooltip>
-              </q-checkbox>
+              <div class="col-12 col-md-3 row no-wrap items-center">
+                <q-checkbox
+                  :model-value="field.async_reference === true"
+                  label="Async reference"
+                  @update:model-value="field.async_reference = $event"
+                />
+                <help-tip topic="field.async_reference" />
+              </div>
+              <div class="col-12 col-md-3 row no-wrap items-center">
+                <q-checkbox
+                  :model-value="field.cascade_delete !== false"
+                  label="Cascade delete"
+                  :disable="!field.async_reference && field.cascade_delete !== false"
+                  @update:model-value="field.cascade_delete = $event"
+                />
+                <help-tip topic="field.cascade_delete" />
+              </div>
             </template>
           </div>
         </template>
 
         <template v-if="field.type === 'float[]'">
-          <div class="text-overline text-grey-7">Vector</div>
+          <div class="text-overline text-grey-7">
+            Vector <help-tip :topic="mode === 'embed' ? 'field.embed' : 'field.num_dim'" />
+          </div>
           <q-btn-toggle
             :model-value="mode"
             class="q-mb-md"
@@ -200,7 +229,11 @@
               label="Embed from fields"
               :options="embedSourceOptions"
               hint="string, string[] or image fields"
-            />
+            >
+              <template #append>
+                <help-tip topic="field.embed" />
+              </template>
+            </q-select>
             <q-select
               v-model="embed.model_config.model_name"
               class="col-12 col-md-6"
@@ -265,7 +298,11 @@
               label="Dimensions"
               :rules="[(val) => Number(val) > 0 || 'Required for vectors']"
               @update:model-value="setNumber('num_dim', $event)"
-            />
+            >
+              <template #append>
+                <help-tip topic="field.num_dim" />
+              </template>
+            </q-input>
             <q-select
               :model-value="field.vec_dist || 'cosine'"
               class="col-6 col-md-3"
@@ -274,7 +311,11 @@
               label="Distance"
               :options="VECTOR_DISTANCES"
               @update:model-value="field.vec_dist = $event"
-            />
+            >
+              <template #append>
+                <help-tip topic="field.vec_dist" />
+              </template>
+            </q-select>
             <q-input
               :model-value="hnsw.M"
               class="col-6 col-md-3"
@@ -285,7 +326,11 @@
               placeholder="16"
               hint="Connections per node"
               @update:model-value="setHnsw('M', $event)"
-            />
+            >
+              <template #append>
+                <help-tip topic="field.hnsw" />
+              </template>
+            </q-input>
             <q-input
               :model-value="hnsw.ef_construction"
               class="col-6 col-md-3"
@@ -305,6 +350,7 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
 import { computed, ref } from 'vue';
 import type { CollectionFieldSchema } from 'typesense/lib/Typesense/Collection';
 import {
@@ -357,7 +403,6 @@ type FlagKey = 'optional' | 'index' | 'store' | 'facet' | 'sort' | 'infix' | 'st
 interface Flag {
   key: FlagKey;
   label: string;
-  help: string;
 }
 
 const field = defineModel<EditableField>({ required: true });
@@ -371,31 +416,16 @@ const props = defineProps<{
 
 const emit = defineEmits<{ remove: [] }>();
 
+/** Help for each flag is in FIELD_HELP under `field.<key>`. */
 const FLAGS: Flag[] = [
-  { key: 'optional', label: 'Optional', help: 'Documents may leave this field out.' },
-  {
-    key: 'index',
-    label: 'Index',
-    help: 'Make the field searchable and filterable. Turn off to only store the value.',
-  },
-  {
-    key: 'store',
-    label: 'Store',
-    help: 'Keep the value on disk so it is returned in results. Turn off for index-only fields.',
-  },
-  { key: 'facet', label: 'Facet', help: 'Allow faceting (counts per value) on this field.' },
-  { key: 'sort', label: 'Sort', help: 'Allow sorting results by this field.' },
-  {
-    key: 'infix',
-    label: 'Infix',
-    help: 'Allow matching in the middle of words. Uses noticeably more memory.',
-  },
-  { key: 'stem', label: 'Stem', help: 'Match word variations such as run / running.' },
-  {
-    key: 'range_index',
-    label: 'Range index',
-    help: 'Speed up range filters (e.g. price:>10) at the cost of memory.',
-  },
+  { key: 'optional', label: 'Optional' },
+  { key: 'index', label: 'Index' },
+  { key: 'store', label: 'Store' },
+  { key: 'facet', label: 'Facet' },
+  { key: 'sort', label: 'Sort' },
+  { key: 'infix', label: 'Infix' },
+  { key: 'stem', label: 'Stem' },
+  { key: 'range_index', label: 'Range index' },
 ];
 
 const chipInputProps = {

@@ -82,10 +82,12 @@
 import { computed, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useNodeStore } from '@/stores/node';
-import type { NodeStatus, SchemaChangeStatus } from '@/stores/node';
+import { useOperationsStore } from '@/stores/operations';
+import type { NodeStatus, SchemaChangeStatus } from '@/stores/operations';
 
 const $q = useQuasar();
 const store = useNodeStore();
+const operationsStore = useOperationsStore();
 
 const status = ref<NodeStatus | null>(null);
 const schemaChanges = ref<SchemaChangeStatus[] | null>(null);
@@ -104,8 +106,8 @@ const role = computed(() => {
 async function refresh() {
   refreshing.value = true;
   [status.value, schemaChanges.value] = await Promise.all([
-    store.getNodeStatus(),
-    store.getSchemaChanges(),
+    operationsStore.getNodeStatus(),
+    operationsStore.getSchemaChanges(),
   ]);
   refreshing.value = false;
 }
@@ -124,7 +126,7 @@ const operations = [
     label: 'Clear search cache',
     action: 'Clear',
     description: 'Empty the cache used by searches sent with use_cache=true.',
-    run: () => run('Clear search cache', () => store.clearCache()),
+    run: () => run('Clear search cache', () => operationsStore.clearCache()),
   },
   {
     label: 'Compact database',
@@ -139,7 +141,7 @@ const operations = [
           cancel: true,
           ok: { label: 'Compact', unelevated: true },
         })
-        .onOk(() => void run('Compact database', () => store.operationCompactDB())),
+        .onOk(() => void run('Compact database', () => operationsStore.compactDB())),
   },
   {
     label: 'Create snapshot',
@@ -160,7 +162,8 @@ const operations = [
           ok: { label: 'Create', unelevated: true },
         })
         .onOk(
-          (path: string) => void run('Create snapshot', () => store.createSnapshot(path.trim())),
+          (path: string) =>
+            void run('Create snapshot', () => operationsStore.createSnapshot(path.trim())),
         ),
   },
   {
@@ -170,7 +173,7 @@ const operations = [
       'Ask this node to step down so the cluster elects a new leader, e.g. before restarting it. Clusters only.',
     run: () =>
       void run('Trigger leader election', async () => {
-        const ok = await store.triggerLeaderElection();
+        const ok = await operationsStore.triggerLeaderElection();
         $q.notify({
           type: ok ? 'positive' : 'info',
           position: 'top',

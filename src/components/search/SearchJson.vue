@@ -103,13 +103,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { LocalStorage } from 'quasar';
-import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
+import { useDocumentsStore } from '@/stores/documents';
+import { exportToJson } from '@/shared/download';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import SearchResultItem from '@/components/search/SearchResultItem.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
 import type { SearchParams } from 'typesense/lib/Typesense/Documents';
 
-const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
+const documentsStore = useDocumentsStore();
 const STORAGE_KEY_SEARCH_HISTORY = 'typesense-search-history';
 
 const history = ref<string[]>([]);
@@ -117,7 +120,7 @@ const searchParameters = ref<SearchParams<any>>({ q: '*', per_page: 10 });
 
 /** Starting parameters that work on the open collection: its searchable text fields. */
 function defaultParameters(): SearchParams<any> {
-  const fields = store.currentCollection?.fields ?? [];
+  const fields = collectionsStore.currentCollection?.fields ?? [];
   const queryBy = fields
     .filter(
       (f) => f.index !== false && ['string', 'string[]'].includes(f.type) && !f.name.includes('*'),
@@ -148,7 +151,7 @@ function summarize(json: string) {
 const jsonError = ref<string | null>(null);
 const results = ref<any>(null);
 
-const currentCollection = computed(() => store.currentCollection);
+const currentCollection = computed(() => collectionsStore.currentCollection);
 
 const searchParametersJson = computed({
   get: () => JSON.stringify(searchParameters.value, null, 2),
@@ -234,14 +237,14 @@ const resultsJson = computed(() => JSON.stringify(results.value, null, 2));
 
 const exportResults = () => {
   if (results.value) {
-    store.exportToJson(results.value);
+    exportToJson(results.value);
   }
 };
 
 const exportHits = () => {
   if (results.value?.hits) {
     const data = results.value.hits.map((h: any) => h.document);
-    store.exportToJson(data);
+    exportToJson(data);
   }
 };
 
@@ -268,7 +271,7 @@ const search = async () => {
   jsonError.value = null;
   addToHistory();
   try {
-    results.value = await store.search(searchParameters.value);
+    results.value = await documentsStore.search(searchParameters.value);
   } catch (error) {
     jsonError.value = (error as Error).message;
   }

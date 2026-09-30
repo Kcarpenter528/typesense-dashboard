@@ -8,10 +8,7 @@
         dense
         toggle-color="primary"
         class="mode-toggle"
-        :options="[
-          { label: 'Browse', value: 'form', icon: 'sym_s_view_module' },
-          { label: 'Query as JSON', value: 'json', icon: 'sym_s_data_object' },
-        ]"
+        :options="modes"
       />
     </div>
 
@@ -22,16 +19,33 @@
       <q-tab-panel name="json" class="q-pa-none">
         <search-json />
       </q-tab-panel>
+      <q-tab-panel v-if="aiAvailable" name="ask" class="q-pa-none">
+        <search-ask />
+      </q-tab-panel>
     </q-tab-panels>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import { useRoute } from 'vue-router';
+import { useNodeStore } from '@/stores/node';
 import SearchJson from '@/components/search/SearchJson.vue';
 import SearchInstantSearch from '@/components/search/SearchInstantSearch.vue';
+import SearchAsk from '@/components/search/SearchAsk.vue';
 
-const tab = ref('form');
+const route = useRoute();
+const store = useNodeStore();
+
+const aiAvailable = computed(
+  () => store.data.features.nlSearchModels || store.data.features.conversationModels,
+);
+const modes = computed(() => [
+  { label: 'Browse', value: 'form', icon: 'sym_s_view_module' },
+  { label: 'Query as JSON', value: 'json', icon: 'sym_s_data_object' },
+  ...(aiAvailable.value ? [{ label: 'Ask', value: 'ask', icon: 'sym_s_auto_awesome' }] : []),
+]);
+const tab = ref(route.query.mode === 'ask' ? 'ask' : 'form');
 </script>
 <style lang="scss">
 .mode-toggle {

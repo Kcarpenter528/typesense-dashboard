@@ -1,6 +1,7 @@
 <template>
   <q-page class="ts-page">
     <page-header
+      help="presets"
       title="Search presets"
       description="A preset is a saved set of search parameters. Search with preset=name instead of repeating the same query_by, sort_by and filters in every request."
     >
@@ -19,7 +20,7 @@
       flat
       bordered
       :filter="state.filter"
-      :rows="store.data.searchPresets"
+      :rows="presetsStore.presets"
       :columns="columns"
       row-key="name"
       :pagination="{ rowsPerPage: 25, sortBy: 'name' }"
@@ -110,23 +111,26 @@
           lazy-rules
           :rules="[(val) => !!val || 'Enter a name']"
         />
-        <div class="ts-eyebrow q-mb-xs">Search parameters</div>
+        <div class="ts-eyebrow q-mb-xs row items-center">
+          Search parameters <help-tip topic="preset.value" class="q-ml-xs" />
+        </div>
         <div class="json-editor">
           <monaco-editor v-model="presetJson" />
         </div>
         <div v-if="state.jsonError" class="text-negative text-caption q-mt-xs">
           {{ state.jsonError }}
         </div>
-        <q-btn
-          flat
-          dense
-          no-caps
-          color="primary"
-          icon="sym_s_open_in_new"
-          label="Search parameters in the Typesense docs"
-          class="self-start q-mt-sm"
-          :href="`https://typesense.org/docs/${store.data.debug.version || store.data.defaultDocVersion}/api/search.html#presets`"
-          target="_blank"
+        <help-links
+          class="q-mt-sm"
+          :links="[
+            { kind: 'api', page: 'search', anchor: 'presets', label: 'Presets' },
+            {
+              kind: 'api',
+              page: 'search',
+              anchor: 'search-parameters',
+              label: 'Search parameters',
+            },
+          ]"
         />
       </q-form>
       <template #actions>
@@ -146,11 +150,14 @@
 </template>
 
 <script setup lang="ts">
+import HelpTip from '@/components/help/HelpTip.vue';
+import HelpLinks from '@/components/help/HelpLinks.vue';
 import { computed, onMounted, reactive } from 'vue';
 import { useQuasar } from 'quasar';
 import type { QTableProps } from 'quasar';
 import type { PresetSchema } from 'typesense/lib/Typesense/Preset';
 import { useNodeStore } from '@/stores/node';
+import { useSearchPresetsStore } from '@/stores/searchPresets';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import SideSheet from '@/components/ui/SideSheet.vue';
@@ -163,6 +170,7 @@ interface PresetDraft {
 
 const $q = useQuasar();
 const store = useNodeStore();
+const presetsStore = useSearchPresetsStore();
 
 const EXAMPLE: Record<string, unknown> = {
   query_by: 'title,description',
@@ -236,7 +244,7 @@ function editPreset(preset: PresetSchema<Record<string, unknown>>) {
 
 async function savePreset() {
   const message = state.editing ? 'Preset saved' : 'Preset created';
-  await store.upsertSearchPreset(JSON.parse(JSON.stringify(state.preset)));
+  await presetsStore.upsert(JSON.parse(JSON.stringify(state.preset)));
   if (!store.error) {
     state.sheetOpen = false;
     $q.notify({ type: 'positive', message, position: 'top', timeout: 1500 });
@@ -250,12 +258,12 @@ function deletePreset(name: string) {
     cancel: { flat: true, noCaps: true, label: 'Cancel' },
     ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete preset' },
   }).onOk(() => {
-    void store.deleteSearchPreset(name);
+    void presetsStore.remove(name);
   });
 }
 
 onMounted(() => {
-  void store.getSearchPresets();
+  void presetsStore.load();
 });
 </script>
 

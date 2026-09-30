@@ -7,6 +7,7 @@ import {
 } from 'vue-router';
 import routes from './routes';
 import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
 
 /*
  * If not building with SSR mode, you can
@@ -36,13 +37,16 @@ export default defineRouter(function ({ store }) {
 
   Router.beforeEach((to, from, next) => {
     const nodeStore = useNodeStore(store);
+    const collectionsStore = useCollectionsStore(store);
     if (to.name !== 'Login' && !nodeStore.isConnected) {
       nodeStore.setPreviousRoute(to);
       next({ name: 'Login' });
     } else if (to.params.name) {
-      if (!nodeStore.currentCollection || nodeStore.currentCollection.name !== to.params.name) {
-        // TODO check await needed?
-        void nodeStore.loadCurrentCollectionByName(to.params.name as string);
+      if (
+        !collectionsStore.currentCollection ||
+        collectionsStore.currentCollection.name !== to.params.name
+      ) {
+        collectionsStore.loadCurrentCollectionByName(to.params.name as string);
       }
       next();
     } else next();
