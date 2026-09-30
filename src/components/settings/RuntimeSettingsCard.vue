@@ -90,13 +90,13 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue';
 import { useQuasar } from 'quasar';
-import { useNodeStore } from '@/stores/node';
+import { useOperationsStore } from '@/stores/operations';
 import { groupBy, RUNTIME_SETTINGS, validateRuntimeValue } from '@/shared/serverConfig';
 import type { RuntimeSetting } from '@/shared/serverConfig';
 import { useRuntimeHistory } from '@/shared/useRuntimeHistory';
 
 const $q = useQuasar();
-const store = useNodeStore();
+const operationsStore = useOperationsStore();
 const { applied, record } = useRuntimeHistory();
 
 const groups = groupBy(RUNTIME_SETTINGS);
@@ -155,7 +155,7 @@ function apply(setting: RuntimeSetting) {
 
 async function send(setting: RuntimeSetting, value: number | boolean) {
   saving[setting.key] = true;
-  const error = await store.setRuntimeConfig(setting.key, value);
+  const error = await operationsStore.setRuntimeConfig(setting.key, value);
   saving[setting.key] = false;
   if (error) {
     $q.notify({ type: 'negative', position: 'top', message: `${setting.label}: ${error}` });

@@ -90,7 +90,7 @@
         <span v-if="linkedSets" class="fact">{{ linkedSets }}</span>
         <span class="fact ts-faint">Created {{ createdAt }}</span>
       </div>
-      <div v-else-if="store.data.collections.length" class="facts">
+      <div v-else-if="collectionsStore.collections.length" class="facts">
         <span class="fact">This collection doesn't exist on the server.</span>
       </div>
 
@@ -123,20 +123,24 @@
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useNodeStore } from '@/stores/node';
+import { useAliasesStore } from '@/stores/aliases';
+import { useCollectionsStore } from '@/stores/collections';
 import { collectionTabs } from '@/shared/navigation';
 import { useCollectionActions } from '@/shared/useCollectionActions';
 
 const store = useNodeStore();
+const aliasesStore = useAliasesStore();
+const collectionsStore = useCollectionsStore();
 const route = useRoute();
 const router = useRouter();
 const actions = useCollectionActions();
 
 const name = computed(() => String(route.params.name ?? ''));
-const collection = computed(() => store.data.collections.find((c) => c.name === name.value));
+const collection = computed(() => collectionsStore.collections.find((c) => c.name === name.value));
 const tabs = computed(() => collectionTabs(store, name.value));
 
 const otherCollections = computed(() =>
-  store.data.collections
+  collectionsStore.collections
     .filter((c) => c.name !== name.value)
     .sort((a, b) => a.name.localeCompare(b.name)),
 );
@@ -149,7 +153,7 @@ const topLevelFields = computed(() => {
 });
 
 const aliases = computed(() =>
-  store.data.aliases.filter((a) => a.collection_name === name.value).map((a) => a.name),
+  aliasesStore.aliases.filter((a) => a.collection_name === name.value).map((a) => a.name),
 );
 
 const linkedSets = computed(() => {

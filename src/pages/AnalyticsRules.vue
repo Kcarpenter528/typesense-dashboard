@@ -26,7 +26,7 @@
       flat
       bordered
       :filter="state.filter"
-      :rows="store.data.analyticsRules"
+      :rows="analyticsStore.rules"
       :columns="columns"
       row-key="name"
       :pagination="{ rowsPerPage: 50, sortBy: 'name' }"
@@ -247,6 +247,9 @@ import type {
   AnalyticsRuleSchema,
 } from 'typesense/lib/Typesense/AnalyticsRule';
 import { useNodeStore } from '@/stores/node';
+import { useAliasesStore } from '@/stores/aliases';
+import { useAnalyticsRulesStore } from '@/stores/analyticsRules';
+import { useCollectionsStore } from '@/stores/collections';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import SideSheet from '@/components/ui/SideSheet.vue';
@@ -266,6 +269,9 @@ interface RuleParams {
 
 const $q = useQuasar();
 const store = useNodeStore();
+const aliasesStore = useAliasesStore();
+const analyticsStore = useAnalyticsRulesStore();
+const collectionsStore = useCollectionsStore();
 
 const RULE_TYPES: { value: RuleType; label: string; hint: string; icon: string }[] = [
   {
@@ -352,7 +358,10 @@ const columns: QTableProps['columns'] = [
 ];
 
 const sourceOptions = computed(() =>
-  [...store.data.collections.map((c) => c.name), ...store.data.aliases.map((a) => a.name)].sort(),
+  [
+    ...collectionsStore.collections.map((c) => c.name),
+    ...aliasesStore.aliases.map((a) => a.name),
+  ].sort(),
 );
 
 const ruleJson = computed({
@@ -392,7 +401,7 @@ function editRule(rule: AnalyticsRuleSchema) {
 
 async function saveRule() {
   const message = state.editing ? 'Rule saved' : 'Rule created';
-  await store.createAnalyticsRule(state.rule);
+  await analyticsStore.upsert(state.rule);
   if (!store.error) {
     state.sheetOpen = false;
     $q.notify({ type: 'positive', message, position: 'top', timeout: 1500 });
@@ -406,12 +415,12 @@ function deleteRule(name: string) {
     cancel: { flat: true, noCaps: true, label: 'Cancel' },
     ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete rule' },
   }).onOk(() => {
-    void store.deleteAnalyticsRule(name);
+    void analyticsStore.remove(name);
   });
 }
 
 onMounted(() => {
-  void store.getAnalyticsRules();
+  void analyticsStore.refresh();
 });
 </script>
 

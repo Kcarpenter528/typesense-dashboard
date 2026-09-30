@@ -114,6 +114,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
+import { useStopwordsStore } from '@/stores/stopwords';
+import { exportToJson } from '@/shared/download';
 import SearchResultItem from '@/components/search/SearchResultItem.vue';
 import DebouncedSearchBox from '@/components/search/DebouncedSearchBox.vue';
 import TypesenseInstantSearchAdapter from 'typesense-instantsearch-adapter';
@@ -121,6 +124,8 @@ import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
 import type { ConfigurationOptions } from 'typesense/lib/Typesense/Configuration';
 
 const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
+const stopwordsStore = useStopwordsStore();
 const searchClient = ref<any>(null);
 const typesenseInstantsearchAdapter = ref<TypesenseInstantSearchAdapter>();
 const instantSearchInstance = ref<any>();
@@ -142,7 +147,7 @@ const middlewares = [
 ];
 
 const currentCollection = computed((): CollectionSchema | null => {
-  return store.currentCollection;
+  return collectionsStore.currentCollection;
 });
 
 const facetNumberFields = computed((): string[] => {
@@ -196,12 +201,12 @@ const sortBy = computed((): { value: string; label: string }[] => {
 });
 
 const stopwords = computed(() => {
-  return store.data.stopwords.map((set) => set.id);
+  return stopwordsStore.stopwords.map((set) => set.id);
 });
 
 const exportPage = () => {
   if (instantSearchInstance.value && currentCollection.value) {
-    store.exportToJson(
+    exportToJson(
       instantSearchInstance.value.renderState[currentCollection.value.name].hits.results.hits,
     );
   }

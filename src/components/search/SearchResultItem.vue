@@ -41,7 +41,8 @@
 import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
 import { computed } from 'vue';
 import { useQuasar } from 'quasar';
-import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
+import { useDocumentsStore } from '@/stores/documents';
 import SearchResultItemNestedDisplay from './SearchResultItemNestedDisplay.vue';
 
 const props = defineProps<{
@@ -49,11 +50,12 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<(e: 'deleted', id: string) => void>();
 
-const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
+const documentsStore = useDocumentsStore();
 const $q = useQuasar();
 
 const currentCollection = computed((): CollectionSchema | null => {
-  return store.currentCollection;
+  return collectionsStore.currentCollection;
 });
 
 const collectionFields = computed((): string[] => {
@@ -74,7 +76,7 @@ const editDocument = () => {
       copyItem[key] = props.item?.[key];
     }
   });
-  void store.editDocuments([JSON.parse(JSON.stringify(copyItem))]);
+  void documentsStore.editDocuments([JSON.parse(JSON.stringify(copyItem))]);
 };
 
 const deleteDocumentById = (id: string) => {
@@ -84,7 +86,7 @@ const deleteDocumentById = (id: string) => {
     cancel: true,
     persistent: true,
   }).onOk(() => {
-    store
+    documentsStore
       .deleteDocumentById(id)
       ?.then(() => {
         emit('deleted', id);

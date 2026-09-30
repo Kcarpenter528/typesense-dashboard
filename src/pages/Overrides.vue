@@ -28,7 +28,7 @@
 
     <template v-else-if="collectionName">
       <curation-table
-        :rows="store.data.overrides as CurationItem[]"
+        :rows="curationsStore.overrides as CurationItem[]"
         @create="openEditor()"
         @edit="openEditor($event)"
         @delete="removeItem"
@@ -254,6 +254,7 @@ import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { nanoid } from 'nanoid';
 import { useNodeStore } from '@/stores/node';
+import { useCurationsStore } from '@/stores/curations';
 import { useRuleSets } from '@/shared/useRuleSets';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
@@ -265,6 +266,7 @@ import type { CurationItem } from '@/components/rules/CurationTable.vue';
 
 const $q = useQuasar();
 const store = useNodeStore();
+const curationsStore = useCurationsStore();
 const route = useRoute();
 const ruleSets = useRuleSets('curation');
 
@@ -389,7 +391,7 @@ async function saveItem() {
     ok = await ruleSets.saveItem(selectedSet.value, item);
   } else {
     const { id, ...override } = item;
-    await store.createOverride({ id, override: override });
+    await curationsStore.create({ id, override: override });
     ok = !store.error;
   }
   if (ok) {
@@ -411,13 +413,13 @@ function removeItem(item: CurationItem) {
     ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete curation' },
   }).onOk(() => {
     if (setsMode.value && selectedSet.value) void ruleSets.deleteItem(selectedSet.value, item.id);
-    else void store.deleteOverride({ id: item.id });
+    else void curationsStore.remove(item.id);
   });
 }
 
 function refresh() {
   if (setsMode.value) void ruleSets.load();
-  else if (collectionName.value) store.getOverrides(collectionName.value);
+  else if (collectionName.value) curationsStore.load(collectionName.value);
 }
 
 onMounted(refresh);

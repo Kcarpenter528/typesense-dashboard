@@ -1,35 +1,27 @@
 import type { AxiosResponse } from 'axios';
-import type { CollectionSchema, CollectionUpdateSchema } from 'typesense/lib/Typesense/Collection';
-import type { CollectionAliasSchema } from 'typesense/lib/Typesense/Aliases';
-import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
-import type { KeySchema } from 'typesense/lib/Typesense/Key';
-import type { SynonymSchema } from 'typesense/lib/Typesense/Synonym';
-import type { SynonymCreateSchema } from 'typesense/lib/Typesense/Synonyms';
-import type { OverrideSchema } from 'typesense/lib/Typesense/Override';
-import type { OverrideCreateSchema } from 'typesense/lib/Typesense/Overrides';
-import type { SearchParams } from 'typesense/lib/Typesense/Documents';
 import type { DebugResponseSchema } from 'typesense/lib/Typesense/Debug';
-import type {
-  AnalyticsRuleCreateSchema,
-  AnalyticsRuleSchema,
-} from 'typesense/lib/Typesense/AnalyticsRule';
-import type { PresetSchema } from 'typesense/lib/Typesense/Preset';
-import type { StopwordSchema } from 'typesense/lib/Typesense/Stopword';
-import type { StemmingDictionariesRetrieveSchema } from 'typesense/lib/Typesense/StemmingDictionaries';
-import type { StemmingDictionarySchema } from 'typesense/lib/Typesense/StemmingDictionary';
 import type { NodeConfiguration } from 'typesense/lib/Typesense/Configuration';
-import type {
-  CurationObjectSchema,
-  CurationSetsListEntrySchema,
-} from 'typesense/lib/Typesense/CurationSets';
-import type { SynonymSetSchema } from 'typesense/lib/Typesense/SynonymSets';
 import type { RouteLocationNormalized } from 'vue-router';
 
-import FileSaver from 'file-saver';
 import { LocalStorage, Notify } from 'quasar';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { Api } from '@/shared/api';
-import { buildCreateSchema } from '@/shared/schemaDiff';
+import { isValidCollectionsPayload, useCollectionsStore } from './collections';
+import { useAliasesStore } from './aliases';
+import { useApiKeysStore } from './apiKeys';
+import { useAnalyticsRulesStore } from './analyticsRules';
+import { useSearchPresetsStore } from './searchPresets';
+import { useStopwordsStore } from './stopwords';
+import { useStemmingStore } from './stemming';
+import { useSynonymsStore } from './synonyms';
+import { useCurationsStore } from './curations';
+
+/*
+ * The connection to a Typesense node: login, server history, what the server reports
+ * about itself (health, metrics, version, available features) and the shared error
+ * banner. Each API area (collections, documents, aliases, keys, …) has its own store
+ * next to this one and reaches the server through `useNodeStore().api`.
+ */
 
 export interface Health {
   ok: boolean;
@@ -44,15 +36,6 @@ export interface NodeDataInterface {
   stats: any;
 
   health: Health | undefined;
-  collections: CollectionSchema[];
-  aliases: CollectionAliasSchema[];
-  apiKeys: KeySchema[];
-  analyticsRules: AnalyticsRuleSchema[];
-  searchPresets: PresetSchema<any>[];
-  stopwords: StopwordSchema[];
-  stemmingDictionaries: string[];
-  overrides: OverrideRow[];
-  synonyms: SynonymRow[];
   defaultDocVersion: string;
   features: {
     stopwords: boolean;
@@ -68,6 +51,8 @@ export interface NodeDataInterface {
     curationSets: boolean;
   };
 }
+
+export type FeatureKey = keyof NodeDataInterface['features'];
 
 export interface CustomNodeConfiguration extends NodeConfiguration {
   tls: boolean;
@@ -97,19 +82,8 @@ export interface NodeStateInterface {
   previousRoute: RouteLocationNormalized | null;
   error: string | null;
   data: NodeDataInterface;
-  currentCollection: CollectionSchema | null;
   uiConfig: UIConfigInterface;
-
-  documentsToEdit: any[] | null;
 }
-
-export type SynonymRow = SynonymSchema & {
-  _setName?: string;
-};
-
-export type OverrideRow = OverrideSchema & {
-  _setName?: string;
-};
 
 export const STORAGE_KEY_LOGIN = 'typesense-logindata';
 export const STORAGE_KEY_LOGIN_HISTORY = 'typesense-loginhistory';
@@ -120,66 +94,6 @@ function isValidMetricsPayload(payload: unknown): payload is Record<string, unkn
   if (keys.length === 0) return false;
   // Typesense metrics generally contain system_* and/or typesense_* keys.
   return keys.some((k) => k.startsWith('system_') || k.startsWith('typesense_'));
-}
-
-export interface NodeStatus {
-  state: string;
-  committed_index?: number;
-  queued_writes?: number;
-}
-
-export interface SchemaChangeStatus {
-  collection: string;
-  validated_docs?: number;
-  altered_docs?: number;
-}
-
-export interface ImportFailure {
-  line: number;
-  error: string;
-  document: string;
-}
-
-export interface RecreateCollectionResult {
-  ok: boolean;
-  documentCount: number;
-  failures: ImportFailure[];
-  /** Temporary collection left on the server, either on request or because something failed. */
-  backupName?: string;
-}
-
-async function importJsonl(api: Api, collectionName: string, jsonl: string) {
-  const lines = jsonl.split('\n').filter((l) => l.trim());
-  if (!lines.length) return [];
-  const results = (
-    (await api.importDocumentsJsonl(collectionName, lines.join('\n'), 'create')) ?? ''
-  )
-    .split('\n')
-    .filter((l) => l.trim());
-  const failures: ImportFailure[] = [];
-  results.forEach((raw, index) => {
-    const result = JSON.parse(raw) as { success: boolean; error?: string };
-    if (!result.success) {
-      failures.push({
-        line: index + 1,
-        error: result.error ?? 'Unknown error',
-        document: lines[index] ?? '',
-      });
-    }
-  });
-  return failures;
-}
-
-function isValidCollectionsPayload(payload: unknown): payload is CollectionSchema[] {
-  if (!Array.isArray(payload)) return false;
-  // Collections are objects; require at least a name to avoid treating junk as success.
-  return payload.every(
-    (c) =>
-      c &&
-      typeof c === 'object' &&
-      !Array.isArray(c) &&
-      typeof (c as Record<string, unknown>).name === 'string',
-  );
 }
 
 function state(): NodeStateInterface {
@@ -203,8 +117,6 @@ function state(): NodeStateInterface {
     isConnected: false,
     previousRoute: null,
     error: null,
-    currentCollection: null,
-    documentsToEdit: [],
     uiConfig: {
       hideProjectInfo: false,
     },
@@ -213,15 +125,6 @@ function state(): NodeStateInterface {
       metrics: {},
       stats: {},
       health: undefined,
-      collections: [],
-      aliases: [],
-      apiKeys: [],
-      analyticsRules: [],
-      searchPresets: [],
-      stopwords: [],
-      stemmingDictionaries: [],
-      overrides: [],
-      synonyms: [],
       defaultDocVersion: '28.0',
       features: {
         stopwords: false,
@@ -337,37 +240,27 @@ export const useNodeStore = defineStore('node', {
         if (!isValidCollectionsPayload(collections)) {
           throw new Error('Invalid collections response');
         }
-        this.setData({ collections });
+        useCollectionsStore().collections = collections;
 
-        // Optional features depending on the apiKey and server capabilities
-        [
-          'getAliases',
-          'getSearchPresets',
-          'getAnalyticsRules',
-          'getStopwords',
-          'getStemmingDictionaries',
-          'getApiKeys',
-          'getDebug',
-          'getSynonymSets',
-          'getCurationSets',
-        ].forEach((funcName) => {
-          const key = (funcName[3]?.toLowerCase() +
-            funcName.slice(4)) as keyof NodeDataInterface['features'];
-          const func = (this as any)[funcName];
-          func()
-            .then(() => {
-              this.setFeature({
-                key,
-                value: true,
-              });
-            })
-            .catch(() => {
-              this.setFeature({
-                key,
-                value: false,
-              });
-            });
-        });
+        // Optional features depending on the apiKey and server capabilities.
+        // A feature is available when its first load succeeds.
+        const probes: [FeatureKey, () => Promise<unknown>][] = [
+          ['aliases', () => useAliasesStore().load()],
+          ['searchPresets', () => useSearchPresetsStore().load()],
+          ['analyticsRules', () => useAnalyticsRulesStore().load()],
+          ['stopwords', () => useStopwordsStore().load()],
+          ['stemmingDictionaries', () => useStemmingStore().load()],
+          ['apiKeys', () => useApiKeysStore().load()],
+          ['debug', () => this.getDebug()],
+          ['synonymSets', () => useSynonymsStore().fetchSets()],
+          ['curationSets', () => useCurationsStore().fetchSets()],
+        ];
+        for (const [key, probe] of probes) {
+          probe().then(
+            () => this.setFeature({ key, value: true }),
+            () => this.setFeature({ key, value: false }),
+          );
+        }
 
         this.setIsConnected(true);
         this.saveHistory();
@@ -430,179 +323,6 @@ export const useNodeStore = defineStore('node', {
         });
       });
     },
-    async getCollections() {
-      await this.api
-        ?.getCollections()
-        ?.then((response: CollectionSchema[]) => {
-          this.setData({
-            collections: response,
-          });
-        })
-        .catch((err: Error) => {
-          console.log(err);
-          void this.connectionCheck();
-        });
-    },
-    async getAliases() {
-      await this.api?.getAliases()?.then((response: { aliases: CollectionAliasSchema[] }) => {
-        this.setData({
-          aliases: response.aliases,
-        });
-      });
-    },
-    async getApiKeys() {
-      await this.api?.getApiKeys()?.then((response: { keys: KeySchema[] }) => {
-        this.setData({
-          apiKeys: response.keys,
-        });
-      });
-    },
-    async getAnalyticsRules() {
-      await this.api
-        ?.getAnalyticsRules()
-        ?.then((response: AnalyticsRuleSchema[] | { rules: AnalyticsRuleSchema[] }) => {
-          const analyticsRules = Array.isArray(response) ? response : (response?.rules ?? []);
-          this.setData({
-            analyticsRules,
-          });
-        })
-        .catch((error) => {
-          this.setError((error as Error).message);
-          this.setData({
-            analyticsRules: [],
-          });
-        });
-    },
-    async deleteAnalyticsRule(name: string) {
-      await this.api?.deleteAnalyticsRule(name);
-      void this.getAnalyticsRules();
-    },
-    async createAnalyticsRule(rule: AnalyticsRuleCreateSchema) {
-      try {
-        this.setError(null);
-        await this.api?.upsertAnalyticsRule(rule.name, rule);
-        void this.getAnalyticsRules();
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    async getSearchPresets() {
-      await this.api?.getSearchPresets()?.then((response: { presets: PresetSchema<any>[] }) => {
-        this.setData({
-          searchPresets: response.presets,
-        });
-      });
-    },
-    async deleteSearchPreset(name: string) {
-      await this.api?.deleteSearchPreset(name);
-      void this.getSearchPresets();
-    },
-    async upsertSearchPreset(preset: any) {
-      try {
-        this.setError(null);
-        await this.api?.upsertSearchPreset(preset.name, preset);
-        void this.getSearchPresets();
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    async getStopwords() {
-      await this.api?.getStopwords()?.then((response: { stopwords: StopwordSchema[] }) => {
-        this.setData({
-          stopwords: response.stopwords,
-        });
-      });
-    },
-    async upsertStopwords(stopwordsSet: any) {
-      try {
-        this.setError(null);
-        await this.api?.upsertStopwords(stopwordsSet.id, stopwordsSet);
-        void this.getStopwords();
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    async deleteStopwords(id: string) {
-      await this.api?.deleteStopwords(id);
-      void this.getStopwords();
-    },
-    async getStemmingDictionaries() {
-      await this.api
-        ?.getStemmingDictionaries()
-        ?.then((response: StemmingDictionariesRetrieveSchema) => {
-          this.setData({
-            stemmingDictionaries: response.dictionaries,
-          });
-        });
-    },
-    async upsertStemmingDictionaries(dictionary: StemmingDictionarySchema) {
-      try {
-        this.setError(null);
-        await this.api?.upsertStemmingDictionaries(dictionary.id, dictionary.words);
-        void this.getStemmingDictionaries();
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    async getStemmingDictionary(id: string) {
-      return await this.api?.getStemmingDictionary(id);
-    },
-    async deleteStemmingDictionary(id: string) {
-      await this.api?.delete(`/stemming/dictionaries/${id}`);
-      void this.getStemmingDictionaries();
-    },
-    getSynonyms(collectionName: string) {
-      if (this.data.features.synonymSets) {
-        void this.api?.getSynonymSets()?.then((sets: SynonymSetSchema[]) => {
-          const collection = collectionName
-            ? this.currentCollection?.name === collectionName
-              ? this.currentCollection
-              : this.data.collections.find((c) => c.name === collectionName)
-            : null;
-          const allowedSets = collection?.synonym_sets;
-          const filteredSets =
-            allowedSets !== undefined ? sets.filter((set) => allowedSets.includes(set.name)) : sets;
-          const synonyms: SynonymRow[] = filteredSets.flatMap((set) =>
-            set.items.map((item) => ({ ...item, _setName: set.name })),
-          );
-          this.setData({ synonyms });
-        });
-      } else if (collectionName) {
-        void this.api
-          ?.getSynonyms(collectionName)
-          ?.then((response: { synonyms: SynonymSchema[] }) => {
-            this.setData({ synonyms: response.synonyms });
-          })
-          // v30 removed per-collection synonyms; this runs before feature detection finishes.
-          .catch(() => this.setData({ synonyms: [] }));
-      }
-    },
-    getOverrides(collectionName: string) {
-      if (this.data.features.curationSets) {
-        void this.api?.getCurationSets()?.then((sets: CurationSetsListEntrySchema[]) => {
-          const collection = collectionName
-            ? this.currentCollection?.name === collectionName
-              ? this.currentCollection
-              : this.data.collections.find((c) => c.name === collectionName)
-            : null;
-          const allowedSets = collection?.curation_sets;
-          const filteredSets =
-            allowedSets !== undefined ? sets.filter((set) => allowedSets.includes(set.name)) : sets;
-          const overrides: OverrideRow[] = filteredSets.flatMap((set) =>
-            set.items.map((item) => ({ ...item, _setName: set.name })),
-          );
-          this.setData({ overrides });
-        });
-      } else if (collectionName) {
-        void this.api
-          ?.getOverrides(collectionName)
-          ?.then((response: { overrides: OverrideSchema[] }) => {
-            this.setData({ overrides: response.overrides });
-          })
-          // v30 removed per-collection overrides; this runs before feature detection finishes.
-          .catch(() => this.setData({ overrides: [] }));
-      }
-    },
     login(loginData: NodeLoginPayloadInterface) {
       const { apiKey, node, forceHomeRedirect = false, connectionTimeoutSeconds } = loginData;
       let { clusterTag } = loginData;
@@ -636,559 +356,12 @@ export const useNodeStore = defineStore('node', {
     logout() {
       LocalStorage.remove(STORAGE_KEY_LOGIN);
       this.setNodeData(null);
-      this.setCurrentCollection(null);
+      useCollectionsStore().setCurrentCollection(null);
       this.setIsConnected(false);
     },
     isCurrent(member: NodeLoginDataInterface): boolean {
       return JSON.stringify(this.loginData) === JSON.stringify(member);
     },
-    loadCurrentCollection(collection: CollectionSchema | null) {
-      this.setCurrentCollection(collection);
-      if (!collection) {
-        return;
-      }
-      void this.getSynonyms(collection.name);
-      void this.getOverrides(collection.name);
-      if (this.router.currentRoute.value.params?.name) {
-        const params = { ...this.router.currentRoute.value.params, name: collection.name };
-        void this.router.push({ name: this.router.currentRoute.value.name, params });
-      }
-    },
-    loadCurrentCollectionByName(collectionName: string) {
-      const collection = this.data.collections.find((c) => c.name === collectionName);
-      if (collection) {
-        return this.loadCurrentCollection(collection);
-      }
-    },
-    async dropCollection(name: string) {
-      this.setCurrentCollection(null);
-      await this.api?.dropCollection(name);
-      void this.getCollections();
-    },
-    async createCollection(schema: CollectionSchema) {
-      try {
-        this.setError(null);
-        const collection: CollectionSchema | undefined = await this.api?.createCollection(
-          JSON.parse(JSON.stringify(schema)),
-        );
-        if (!collection) {
-          throw new Error('Failed to create collection');
-        }
-        this.setData({
-          collections: this.data.collections.concat([collection]),
-        });
-        this.setCurrentCollection(collection);
-        await this.router.push(`/collection/${collection.name}/schema`);
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    async updateCollection(payload: {
-      collectionName: string;
-      schema: CollectionUpdateSchema;
-    }): Promise<boolean> {
-      try {
-        this.setError(null);
-        await this.api?.updateCollection(payload.collectionName, payload.schema);
-        await this.refreshCollection(payload.collectionName);
-        return true;
-      } catch (error) {
-        this.setError((error as Error).message);
-        return false;
-      }
-    },
-    async refreshCollection(collectionName: string) {
-      const collection = await this.api?.getCollection(collectionName);
-      if (!collection) return;
-      const exists = this.data.collections.some((c) => c.name === collectionName);
-      this.setData({
-        collections: exists
-          ? this.data.collections.map((c) => (c.name === collectionName ? collection : c))
-          : this.data.collections.concat([collection]),
-      });
-      this.setCurrentCollection(collection);
-    },
-    /**
-     * Recreates a collection under the same name with a new schema, keeping its documents.
-     * Needed for settings Typesense only accepts at creation (e.g. `enable_nested_fields`).
-     *
-     * The documents are first imported into a temporary collection with the new schema,
-     * which validates every document while the original is still untouched. Only then is
-     * the original dropped and recreated, and the temporary collection is kept until the
-     * final import succeeds, so the data always exists on the server.
-     */
-    async recreateCollection(payload: {
-      collectionName: string;
-      schema: CollectionCreateSchema;
-      keepBackup: boolean;
-      onProgress?: (message: string) => void;
-    }): Promise<RecreateCollectionResult> {
-      const api = this.api;
-      if (!api) throw new Error('Not connected');
-      const { collectionName, keepBackup } = payload;
-      const progress = payload.onProgress ?? (() => undefined);
-      const tempName = `${collectionName}__recreate_${Date.now()}`;
-      const legacyCurations = !this.data.features.synonymSets;
-
-      progress('Exporting documents');
-      const jsonl = (await api.exportDocuments(collectionName)) ?? '';
-      const documentCount = jsonl.split('\n').filter((l) => l.trim()).length;
-
-      // Before v30, synonyms and curations belong to the collection and are lost on drop.
-      let legacySynonyms: any[] = [];
-      let legacyOverrides: any[] = [];
-      if (legacyCurations) {
-        legacySynonyms = ((await api.getSynonyms(collectionName)) as any)?.synonyms ?? [];
-        legacyOverrides = ((await api.getOverrides(collectionName)) as any)?.overrides ?? [];
-      }
-
-      progress(`Validating ${documentCount} documents against the new schema`);
-      await api.createCollection(buildCreateSchema(payload.schema, tempName));
-      const tempFailures = await importJsonl(api, tempName, jsonl);
-      if (tempFailures.length) {
-        await api.dropCollection(tempName);
-        return { ok: false, documentCount, failures: tempFailures };
-      }
-
-      progress(`Replacing ${collectionName}`);
-      await api.dropCollection(collectionName);
-      try {
-        await api.createCollection(buildCreateSchema(payload.schema, collectionName));
-        progress(`Importing ${documentCount} documents`);
-        const failures = await importJsonl(api, collectionName, jsonl);
-        if (failures.length) {
-          await this.getCollections();
-          return { ok: false, documentCount, failures, backupName: tempName };
-        }
-        for (const { id, ...synonym } of legacySynonyms) {
-          await api.upsertSynonym(collectionName, id, synonym);
-        }
-        for (const { id, ...override } of legacyOverrides) {
-          await api.upsertOverride(collectionName, id, override);
-        }
-      } catch (error) {
-        await this.getCollections();
-        throw new Error(
-          `${(error as Error).message}. Your documents are safe in the collection \`${tempName}\`.`,
-          { cause: error },
-        );
-      }
-
-      if (!keepBackup) {
-        progress('Removing temporary copy');
-        await api.dropCollection(tempName);
-      }
-      await this.getCollections();
-      await this.refreshCollection(collectionName);
-      return {
-        ok: true,
-        documentCount,
-        failures: [],
-        ...(keepBackup ? { backupName: tempName } : {}),
-      };
-    },
-    async cloneCollectionSchema(payload: { collectionName: string; destinationName: string }) {
-      try {
-        this.setError(null);
-        await this.api?.post(`/collections?src_name=${payload.collectionName}`, {
-          name: payload.destinationName,
-        });
-        const collection = await this.api?.getCollection(payload.destinationName);
-        if (!collection) {
-          throw new Error('Failed to clone collection');
-        }
-        this.setData({
-          collections: this.data.collections.concat([collection]),
-        });
-        this.setCurrentCollection(collection);
-        await this.router.push(`/collection/${payload.destinationName}/schema`);
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    async deleteAlias(name: string) {
-      await this.api?.deleteAlias(name);
-      void this.getAliases();
-    },
-    async createAlias(alias: CollectionAliasSchema) {
-      try {
-        this.setError(null);
-        await this.api?.upsertAlias(alias);
-        void this.getAliases();
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    async createApiKey(apiKey: KeySchema): Promise<KeySchema> {
-      try {
-        this.setError(null);
-        const key = (await this.api?.createApiKey(apiKey)) as KeySchema;
-        void this.getApiKeys();
-        return key;
-      } catch (error) {
-        this.setError((error as Error).message);
-        throw error;
-      }
-    },
-    async deleteApiKey(id: string) {
-      await this.api?.deleteApiKey(id);
-      void this.getApiKeys();
-    },
-    async getSynonymSets() {
-      return await this.api?.getSynonymSets();
-    },
-    async getCurationSets() {
-      return await this.api?.getCurationSets();
-    },
-    async fetchAllSynonymSets(): Promise<SynonymSetSchema[]> {
-      const response = await this.getSynonymSets();
-      return Array.isArray(response) ? response : [];
-    },
-    async fetchAllCurationSets(): Promise<CurationSetsListEntrySchema[]> {
-      const response = await this.getCurationSets();
-      return Array.isArray(response) ? response : [];
-    },
-    async linkSynonymSetToCollection(setName: string, collectionName?: string) {
-      if (!this.data.features.synonymSets) return;
-      const col = collectionName
-        ? this.data.collections.find((c) => c.name === collectionName)
-        : this.currentCollection;
-      if (!col) return;
-      const existingSets = col.synonym_sets ?? [];
-      if (!existingSets.includes(setName)) {
-        const newSets = [...existingSets, setName];
-        await this.api?.updateCollection(col.name, { synonym_sets: newSets });
-        if (this.currentCollection?.name === col.name) {
-          this.setCurrentCollection({ ...this.currentCollection, synonym_sets: newSets });
-          void this.getSynonyms(col.name);
-        }
-        void this.getCollections();
-      }
-    },
-    async linkCurationSetToCollection(setName: string, collectionName?: string) {
-      if (!this.data.features.curationSets) return;
-      const col = collectionName
-        ? this.data.collections.find((c) => c.name === collectionName)
-        : this.currentCollection;
-      if (!col) return;
-      const existingSets = col.curation_sets ?? [];
-      if (!existingSets.includes(setName)) {
-        const newSets = [...existingSets, setName];
-        await this.api?.updateCollection(col.name, {
-          curation_sets: newSets,
-        });
-        if (this.currentCollection?.name === col.name) {
-          this.setCurrentCollection({ ...this.currentCollection, curation_sets: newSets });
-          void this.getOverrides(col.name);
-        }
-        void this.getCollections();
-      }
-    },
-    async createSynonym(payload: { id: string; synonym: SynonymCreateSchema; setName?: string }) {
-      try {
-        this.setError(null);
-        if (this.data.features.synonymSets) {
-          const setName = payload.setName || payload.id;
-          if (payload.setName) {
-            await this.api?.upsertSynonymSetItem(setName, payload.id, payload.synonym);
-          } else {
-            await this.api?.upsertSynonymSet(setName, {
-              items: [{ id: payload.id, ...payload.synonym }],
-            });
-          }
-          if (this.currentCollection) {
-            const existingSets = this.currentCollection.synonym_sets ?? [];
-            if (!existingSets.includes(setName)) {
-              await this.api?.updateCollection(this.currentCollection.name, {
-                synonym_sets: [...existingSets, setName],
-              });
-              this.setCurrentCollection({
-                ...this.currentCollection,
-                synonym_sets: [...existingSets, setName],
-              });
-              void this.getCollections();
-            }
-            void this.getSynonyms(this.currentCollection.name);
-          } else {
-            void this.getSynonyms('');
-          }
-        } else {
-          if (!this.currentCollection) {
-            throw new Error('No collection selected');
-          }
-          await this.api?.upsertSynonym(this.currentCollection.name, payload.id, {
-            id: payload.id,
-            ...payload.synonym,
-          });
-          void this.getSynonyms(this.currentCollection.name);
-        }
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    async deleteSynonym(payload: { id: string; setName?: string }) {
-      try {
-        this.setError(null);
-        if (this.data.features.synonymSets) {
-          if (!payload.setName) {
-            throw new Error('Cannot delete a V30 synonym item without its parent set name');
-          }
-          const set = await this.api?.getSynonymSet(payload.setName);
-          if (!set) {
-            throw new Error(`Synonym set ${payload.setName} not found`);
-          }
-          if (set.items.length <= 1) {
-            await this.api?.deleteSynonymSet(payload.setName);
-          } else {
-            await this.api?.deleteSynonymSetItem(payload.setName, payload.id);
-          }
-          if (this.currentCollection) {
-            const existingSets = this.currentCollection.synonym_sets ?? [];
-            if (set.items.length <= 1 && existingSets.includes(payload.setName)) {
-              const synonym_sets = existingSets.filter((setName) => setName !== payload.setName);
-              await this.api?.updateCollection(this.currentCollection.name, { synonym_sets });
-              this.setCurrentCollection({ ...this.currentCollection, synonym_sets });
-            }
-            void this.getCollections();
-            void this.getSynonyms(this.currentCollection.name);
-          } else {
-            void this.getSynonyms('');
-          }
-        } else {
-          if (!this.currentCollection) {
-            throw new Error('No collection selected');
-          }
-          await this.api?.deleteSynonym(this.currentCollection.name, payload.id);
-          void this.getSynonyms(this.currentCollection.name);
-        }
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    async createOverride(payload: {
-      id: string;
-      override: OverrideCreateSchema;
-      setName?: string;
-    }) {
-      try {
-        this.setError(null);
-        const overridePayload = JSON.parse(
-          JSON.stringify(payload.override),
-        ) as OverrideCreateSchema;
-        if (!this.supportsCurationRuleTags && overridePayload.rule) {
-          delete overridePayload.rule.tags;
-        }
-        if (this.data.features.curationSets) {
-          const setName = payload.setName || payload.id;
-          const curationItem = { ...overridePayload, id: payload.id } as CurationObjectSchema;
-          if (payload.setName) {
-            await this.api?.upsertCurationSetItem(setName, curationItem);
-          } else {
-            await this.api?.upsertCurationSet(setName, {
-              items: [curationItem],
-            });
-          }
-          if (this.currentCollection) {
-            const existingSets = this.currentCollection.curation_sets ?? [];
-            if (!existingSets.includes(setName)) {
-              const curation_sets = [...existingSets, setName];
-              await this.api?.updateCollection(this.currentCollection.name, {
-                curation_sets,
-              });
-              this.setCurrentCollection({ ...this.currentCollection, curation_sets });
-              void this.getCollections();
-            }
-            void this.getOverrides(this.currentCollection.name);
-          } else {
-            void this.getOverrides('');
-          }
-        } else {
-          if (!this.currentCollection) {
-            throw new Error('No collection selected');
-          }
-          await this.api?.upsertOverride(this.currentCollection.name, payload.id, overridePayload);
-          void this.getOverrides(this.currentCollection.name);
-        }
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    async deleteOverride(payload: { id: string; setName?: string }) {
-      try {
-        this.setError(null);
-        if (this.data.features.curationSets) {
-          if (!payload.setName) {
-            throw new Error('Cannot delete a V30 curation item without its parent set name');
-          }
-          const set = await this.api?.getCurationSet(payload.setName);
-          if (!set) {
-            throw new Error(`Curation set ${payload.setName} not found`);
-          }
-          if ((set.items ?? []).length <= 1) {
-            await this.api?.deleteCurationSet(payload.setName);
-          } else {
-            await this.api?.deleteCurationSetItem(payload.setName, payload.id);
-          }
-          if (this.currentCollection) {
-            const existingSets = this.currentCollection.curation_sets ?? [];
-            if ((set.items ?? []).length <= 1 && existingSets.includes(payload.setName)) {
-              const curation_sets = existingSets.filter((setName) => setName !== payload.setName);
-              await this.api?.updateCollection(this.currentCollection.name, {
-                curation_sets,
-              });
-              this.setCurrentCollection({ ...this.currentCollection, curation_sets });
-            }
-            void this.getCollections();
-            void this.getOverrides(this.currentCollection.name);
-          } else {
-            void this.getOverrides('');
-          }
-        } else {
-          if (!this.currentCollection) {
-            throw new Error('No collection selected');
-          }
-          await this.api?.deleteOverride(this.currentCollection.name, payload.id);
-          void this.getOverrides(this.currentCollection.name);
-        }
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    deleteDocumentById(id: string) {
-      if (!this.currentCollection) {
-        throw new Error('No collection selected');
-      }
-      return this.api?.deleteDocumentById(this.currentCollection.name, id);
-    },
-    search(payload: SearchParams<any>) {
-      return (this.api as Api)?.search(
-        this.currentCollection?.name || '',
-        JSON.parse(JSON.stringify(payload)), // remove proxy which is not serializable
-      );
-    },
-    importDocuments(payload: { action: string; documents: unknown[] }): Promise<any> {
-      if (!this.currentCollection) {
-        throw new Error('No collection selected');
-      }
-      return this.api?.importDocuments(
-        this.currentCollection.name,
-        payload.documents,
-        payload.action,
-      );
-    },
-    async exportDocuments(collectionName: string): Promise<any> {
-      return this.api?.exportDocuments(collectionName)?.then((documents: string) => {
-        const blob = new Blob([documents], {
-          type: 'text/plain;charset=utf-8',
-        });
-        FileSaver.saveAs(blob, `${collectionName}.jsonl`);
-      });
-    },
-
-    editDocuments(documents: any[]) {
-      this.setDocumentsToEdit(documents);
-      void this.router.push(`/collection/${this.currentCollection?.name || ''}/document`);
-    },
-    exportToJson(object: any) {
-      const blob = new Blob([JSON.stringify(object, null, 2)], {
-        type: 'application/json;charset=utf-8',
-      });
-      FileSaver.saveAs(blob, 'export.json');
-    },
-    async operationCompactDB() {
-      try {
-        this.setError(null);
-        const response = await this.api?.post('/operations/db/compact');
-        if (response.data?.success) {
-          Notify.create({
-            position: 'top',
-            progress: true,
-            group: false,
-            timeout: 1000,
-            color: 'positive',
-            message: 'Compact DB: Server responded with success',
-          });
-        }
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    async clearCache() {
-      try {
-        this.setError(null);
-        const response = await this.api?.post('/operations/cache/clear');
-        if (response.data?.success) {
-          Notify.create({
-            position: 'top',
-            progress: true,
-            group: false,
-            timeout: 1000,
-            color: 'positive',
-            message: 'Clear Cache: Server responded with success',
-          });
-        }
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    /**
-     * Changes a setting on the running node via `POST /config`. The change applies to
-     * this node only and is lost when it restarts. Resolves with an error message, or null.
-     */
-    async setRuntimeConfig(key: string, value: number | boolean): Promise<string | null> {
-      try {
-        const response = await this.api?.post('/config', { [key]: value });
-        return response?.data?.success ? null : 'The server did not confirm the change';
-      } catch (error) {
-        return (error as Error).message;
-      }
-    },
-    /** Raft state of this node (undocumented endpoint; null when unavailable). */
-    async getNodeStatus(): Promise<NodeStatus | null> {
-      try {
-        return ((await this.api?.get('/status'))?.data as NodeStatus | undefined) ?? null;
-      } catch {
-        return null;
-      }
-    },
-    /** Schema changes still being applied (undocumented endpoint; null when unavailable). */
-    async getSchemaChanges(): Promise<SchemaChangeStatus[] | null> {
-      try {
-        const data: unknown = (await this.api?.get('/operations/schema_changes'))?.data;
-        return Array.isArray(data) ? (data as SchemaChangeStatus[]) : [];
-      } catch {
-        return null;
-      }
-    },
-    /** Asks this node to give up leadership so the cluster elects a new leader. */
-    async triggerLeaderElection(): Promise<boolean> {
-      try {
-        const response = await this.api?.post('/operations/vote');
-        return response?.data?.success === true;
-      } catch (error) {
-        this.setError((error as Error).message);
-        return false;
-      }
-    },
-    async createSnapshot(snapshotPath: string) {
-      try {
-        this.setError(null);
-        const response = await this.api?.createSnapshot(snapshotPath);
-        if (response?.success) {
-          Notify.create({
-            position: 'top',
-            progress: true,
-            group: false,
-            timeout: 3000,
-            color: 'positive',
-            message: `Snapshot created successfully at: ${snapshotPath}`,
-          });
-        }
-      } catch (error) {
-        this.setError((error as Error).message);
-      }
-    },
-    /*** mutations from vuex migration ****/
     setNodeData(payload: NodeLoginDataInterface | null): void {
       this.loginData = payload;
       LocalStorage.set(STORAGE_KEY_LOGIN, payload);
@@ -1232,7 +405,7 @@ export const useNodeStore = defineStore('node', {
           message: 'Server changed',
         });
         this.forceHomeRedirect = false;
-        this.currentCollection = null;
+        useCollectionsStore().currentCollection = null;
       }
       this.isConnected = status;
     },
@@ -1345,25 +518,14 @@ export const useNodeStore = defineStore('node', {
     setPreviousRoute(route: RouteLocationNormalized): void {
       this.previousRoute = route;
     },
-    setData(data: any): void {
-      for (const key in data) {
-        this.data[key as keyof NodeDataInterface] = data[key];
-      }
+    setData(data: Partial<NodeDataInterface>): void {
+      Object.assign(this.data, data);
     },
-    setFeature(data: { key: keyof NodeDataInterface['features']; value: boolean }): void {
+    setFeature(data: { key: FeatureKey; value: boolean }): void {
       this.data.features[data.key] = data.value;
     },
     setError(error: string | null): void {
       this.error = error;
-    },
-    setCurrentCollection(collection: CollectionSchema | null): void {
-      this.currentCollection = collection;
-      if (!collection) {
-        void this.router.push('/collections');
-      }
-    },
-    setDocumentsToEdit(documents: any[]): void {
-      this.documentsToEdit = documents;
     },
     setUIConfig(config: UIConfigInterface): void {
       this.uiConfig = { ...this.uiConfig, ...config };

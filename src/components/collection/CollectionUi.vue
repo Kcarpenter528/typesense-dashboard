@@ -140,7 +140,8 @@ import type { CollectionFieldSchema, CollectionSchema } from 'typesense/lib/Type
 import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
 import { computed, ref, watch } from 'vue';
 import type { PropType } from 'vue';
-import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
+import { useStemmingStore } from '@/stores/stemming';
 import MonacoEditor from '../MonacoEditor.vue';
 import FieldEditor from './FieldEditor.vue';
 import { isObjectType } from '@/shared/schemaDiff';
@@ -170,7 +171,8 @@ const emit = defineEmits<{
   submit: [schema: CollectionCreateSchema];
 }>();
 
-const store = useNodeStore();
+const collectionsStore = useCollectionsStore();
+const stemmingStore = useStemmingStore();
 const tab = ref<'form' | 'json'>('form');
 const schema = ref<CollectionCreateSchema>(createDefaultSchema());
 const jsonError = ref<string | null>(null);
@@ -185,7 +187,7 @@ const availableSortFields = computed(() => {
 
 /** `collection.field` targets for reference fields, from the other collections on the server. */
 const referenceOptions = computed(() =>
-  store.data.collections
+  collectionsStore.collections
     .filter((c) => c.name !== schema.value.name)
     .flatMap((c) => [
       `${c.name}.id`,
@@ -230,7 +232,7 @@ function syncMetadataText() {
 }
 
 const stemmingDictionaryOptions = computed(() => {
-  return ['default'].concat(store.data.stemmingDictionaries || []);
+  return ['default'].concat(stemmingStore.dictionaries || []);
 });
 
 const schemaJson = computed({

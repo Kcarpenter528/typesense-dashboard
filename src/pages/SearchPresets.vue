@@ -19,7 +19,7 @@
       flat
       bordered
       :filter="state.filter"
-      :rows="store.data.searchPresets"
+      :rows="presetsStore.presets"
       :columns="columns"
       row-key="name"
       :pagination="{ rowsPerPage: 25, sortBy: 'name' }"
@@ -151,6 +151,7 @@ import { useQuasar } from 'quasar';
 import type { QTableProps } from 'quasar';
 import type { PresetSchema } from 'typesense/lib/Typesense/Preset';
 import { useNodeStore } from '@/stores/node';
+import { useSearchPresetsStore } from '@/stores/searchPresets';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import SideSheet from '@/components/ui/SideSheet.vue';
@@ -163,6 +164,7 @@ interface PresetDraft {
 
 const $q = useQuasar();
 const store = useNodeStore();
+const presetsStore = useSearchPresetsStore();
 
 const EXAMPLE: Record<string, unknown> = {
   query_by: 'title,description',
@@ -236,7 +238,7 @@ function editPreset(preset: PresetSchema<Record<string, unknown>>) {
 
 async function savePreset() {
   const message = state.editing ? 'Preset saved' : 'Preset created';
-  await store.upsertSearchPreset(JSON.parse(JSON.stringify(state.preset)));
+  await presetsStore.upsert(JSON.parse(JSON.stringify(state.preset)));
   if (!store.error) {
     state.sheetOpen = false;
     $q.notify({ type: 'positive', message, position: 'top', timeout: 1500 });
@@ -250,12 +252,12 @@ function deletePreset(name: string) {
     cancel: { flat: true, noCaps: true, label: 'Cancel' },
     ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete preset' },
   }).onOk(() => {
-    void store.deleteSearchPreset(name);
+    void presetsStore.remove(name);
   });
 }
 
 onMounted(() => {
-  void store.getSearchPresets();
+  void presetsStore.load();
 });
 </script>
 

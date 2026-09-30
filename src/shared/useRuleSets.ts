@@ -1,6 +1,9 @@
 import { computed, ref } from 'vue';
 import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
 import { useNodeStore } from '@/stores/node';
+import { useCollectionsStore } from '@/stores/collections';
+import { useCurationsStore } from '@/stores/curations';
+import { useSynonymsStore } from '@/stores/synonyms';
 
 /**
  * Synonym sets and curation sets (Typesense v30+) work the same way: a named set of
@@ -31,6 +34,9 @@ const COLLECTION_KEY = {
 
 export function useRuleSets(kind: RuleSetKind) {
   const store = useNodeStore();
+  const collectionsStore = useCollectionsStore();
+  const curationsStore = useCurationsStore();
+  const synonymsStore = useSynonymsStore();
   const sets = ref<RuleSet[]>([]);
   const loading = ref(false);
   const key = COLLECTION_KEY[kind];
@@ -38,7 +44,7 @@ export function useRuleSets(kind: RuleSetKind) {
   const noun = kind === 'synonym' ? 'synonym set' : 'curation set';
 
   function linkedTo(setName: string): string[] {
-    return store.data.collections
+    return collectionsStore.collections
       .filter((c) =>
         ((c as CollectionSchema & Record<string, string[] | undefined>)[key] ?? []).includes(
           setName,
@@ -64,7 +70,7 @@ export function useRuleSets(kind: RuleSetKind) {
   async function load() {
     loading.value = true;
     const result = await run<unknown>(() =>
-      kind === 'synonym' ? store.fetchAllSynonymSets() : store.fetchAllCurationSets(),
+      kind === 'synonym' ? synonymsStore.fetchSets() : curationsStore.fetchSets(),
     );
     sets.value = ((result ?? []) as unknown as RuleSet[])
       .map((s) => ({ name: s.name, items: s.items ?? [] }))
@@ -109,7 +115,7 @@ export function useRuleSets(kind: RuleSetKind) {
   /** Makes exactly these collections use the set, adding or removing it as needed. */
   async function setCollections(setName: string, wanted: string[]) {
     const ok = await run(async () => {
-      for (const collection of store.data.collections) {
+      for (const collection of collectionsStore.collections) {
         const current =
           (collection as CollectionSchema & Record<string, string[] | undefined>)[key] ?? [];
         const has = current.includes(setName);
@@ -120,7 +126,7 @@ export function useRuleSets(kind: RuleSetKind) {
       }
       return true;
     });
-    await store.getCollections();
+    await collectionsStore.getCollections();
     return !!ok;
   }
 

@@ -28,7 +28,7 @@
 
     <template v-else-if="collectionName">
       <synonym-table
-        :rows="store.data.synonyms as SynonymItem[]"
+        :rows="synonymsStore.synonyms as SynonymItem[]"
         @create="openEditor()"
         @edit="openEditor($event)"
         @delete="removeItem"
@@ -158,6 +158,7 @@ import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { nanoid } from 'nanoid';
 import { useNodeStore } from '@/stores/node';
+import { useSynonymsStore } from '@/stores/synonyms';
 import { useRuleSets } from '@/shared/useRuleSets';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import SideSheet from '@/components/ui/SideSheet.vue';
@@ -168,6 +169,7 @@ import type { SynonymItem } from '@/components/rules/SynonymTable.vue';
 
 const $q = useQuasar();
 const store = useNodeStore();
+const synonymsStore = useSynonymsStore();
 const route = useRoute();
 const ruleSets = useRuleSets('synonym');
 
@@ -219,7 +221,7 @@ async function saveItem() {
     ok = await ruleSets.saveItem(selectedSet.value, item);
   } else {
     const { id, ...synonym } = item;
-    await store.createSynonym({ id, synonym });
+    await synonymsStore.create({ id, synonym });
     ok = !store.error;
   }
   if (ok) {
@@ -244,13 +246,13 @@ function removeItem(item: SynonymItem) {
     ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete synonym' },
   }).onOk(() => {
     if (setsMode.value && selectedSet.value) void ruleSets.deleteItem(selectedSet.value, item.id);
-    else void store.deleteSynonym({ id: item.id });
+    else void synonymsStore.remove(item.id);
   });
 }
 
 function refresh() {
   if (setsMode.value) void ruleSets.load();
-  else if (collectionName.value) store.getSynonyms(collectionName.value);
+  else if (collectionName.value) synonymsStore.load(collectionName.value);
 }
 
 onMounted(refresh);
