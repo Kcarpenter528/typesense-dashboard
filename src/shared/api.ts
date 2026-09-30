@@ -15,7 +15,10 @@ import type { SynonymSchema } from 'typesense/lib/Typesense/Synonym';
 import type { PresetCreateSchema } from 'typesense/lib/Typesense/Presets';
 import type { StopwordCreateSchema } from 'typesense/lib/Typesense/Stopwords';
 import type { AnalyticsRuleUpsertSchema } from 'typesense/lib/Typesense/AnalyticsRule';
-import type { SynonymItemSchema, SynonymSetCreateSchema } from 'typesense/lib/Typesense/SynonymSets';
+import type {
+  SynonymItemSchema,
+  SynonymSetCreateSchema,
+} from 'typesense/lib/Typesense/SynonymSets';
 import type {
   CurationObjectSchema,
   CurationSetUpsertSchema,
@@ -184,6 +187,17 @@ export class Api {
       .catch((error: any) => {
         return error.importResults;
       });
+  }
+
+  /**
+   * Imports JSONL and resolves with the server's JSONL result lines, one per document,
+   * without throwing on per-document failures.
+   */
+  public importDocumentsJsonl(collectionName: string, jsonl: string, action: string) {
+    return this.typesenseClient
+      ?.collections(collectionName)
+      .documents()
+      .import(jsonl, { action: action as 'create' });
   }
 
   public exportDocuments(collectionName: string) {

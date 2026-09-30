@@ -1,6 +1,7 @@
 import type { AxiosResponse } from 'axios';
 import type { CollectionSchema, CollectionUpdateSchema } from 'typesense/lib/Typesense/Collection';
 import type { CollectionAliasSchema } from 'typesense/lib/Typesense/Aliases';
+import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
 import type { KeySchema } from 'typesense/lib/Typesense/Key';
 import type { SynonymSchema } from 'typesense/lib/Typesense/Synonym';
 import type { SynonymCreateSchema } from 'typesense/lib/Typesense/Synonyms';
@@ -28,6 +29,7 @@ import FileSaver from 'file-saver';
 import { LocalStorage, Notify } from 'quasar';
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import { Api } from '@/shared/api';
+import { buildCreateSchema } from '@/shared/schemaDiff';
 
 export interface Health {
   ok: boolean;
@@ -118,6 +120,42 @@ function isValidMetricsPayload(payload: unknown): payload is Record<string, unkn
   if (keys.length === 0) return false;
   // Typesense metrics generally contain system_* and/or typesense_* keys.
   return keys.some((k) => k.startsWith('system_') || k.startsWith('typesense_'));
+}
+
+export interface ImportFailure {
+  line: number;
+  error: string;
+  document: string;
+}
+
+export interface RecreateCollectionResult {
+  ok: boolean;
+  documentCount: number;
+  failures: ImportFailure[];
+  /** Temporary collection left on the server, either on request or because something failed. */
+  backupName?: string;
+}
+
+async function importJsonl(api: Api, collectionName: string, jsonl: string) {
+  const lines = jsonl.split('\n').filter((l) => l.trim());
+  if (!lines.length) return [];
+  const results = (
+    (await api.importDocumentsJsonl(collectionName, lines.join('\n'), 'create')) ?? ''
+  )
+    .split('\n')
+    .filter((l) => l.trim());
+  const failures: ImportFailure[] = [];
+  results.forEach((raw, index) => {
+    const result = JSON.parse(raw) as { success: boolean; error?: string };
+    if (!result.success) {
+      failures.push({
+        line: index + 1,
+        error: result.error ?? 'Unknown error',
+        document: lines[index] ?? '',
+      });
+    }
+  });
+  return failures;
 }
 
 function isValidCollectionsPayload(payload: unknown): payload is CollectionSchema[] {
@@ -511,9 +549,7 @@ export const useNodeStore = defineStore('node', {
             : null;
           const allowedSets = collection?.synonym_sets;
           const filteredSets =
-            allowedSets !== undefined
-              ? sets.filter((set) => allowedSets.includes(set.name))
-              : sets;
+            allowedSets !== undefined ? sets.filter((set) => allowedSets.includes(set.name)) : sets;
           const synonyms: SynonymRow[] = filteredSets.flatMap((set) =>
             set.items.map((item) => ({ ...item, _setName: set.name })),
           );
@@ -537,9 +573,7 @@ export const useNodeStore = defineStore('node', {
             : null;
           const allowedSets = collection?.curation_sets;
           const filteredSets =
-            allowedSets !== undefined
-              ? sets.filter((set) => allowedSets.includes(set.name))
-              : sets;
+            allowedSets !== undefined ? sets.filter((set) => allowedSets.includes(set.name)) : sets;
           const overrides: OverrideRow[] = filteredSets.flatMap((set) =>
             set.items.map((item) => ({ ...item, _setName: set.name })),
           );
@@ -633,25 +667,109 @@ export const useNodeStore = defineStore('node', {
         this.setError((error as Error).message);
       }
     },
-    async updateCollection(payload: { collectionName: string; schema: CollectionUpdateSchema }) {
+    async updateCollection(payload: {
+      collectionName: string;
+      schema: CollectionUpdateSchema;
+    }): Promise<boolean> {
       try {
         this.setError(null);
         await this.api?.updateCollection(payload.collectionName, payload.schema);
-        const collection = await this.api?.getCollection(payload.collectionName);
-        this.setData({
-          collections: this.data.collections.map((c) => {
-            if (c.name === payload.collectionName) {
-              return collection;
-            }
-            return c;
-          }),
-        });
-        if (collection) {
-          this.setCurrentCollection(collection);
-        }
+        await this.refreshCollection(payload.collectionName);
+        return true;
       } catch (error) {
         this.setError((error as Error).message);
+        return false;
       }
+    },
+    async refreshCollection(collectionName: string) {
+      const collection = await this.api?.getCollection(collectionName);
+      if (!collection) return;
+      const exists = this.data.collections.some((c) => c.name === collectionName);
+      this.setData({
+        collections: exists
+          ? this.data.collections.map((c) => (c.name === collectionName ? collection : c))
+          : this.data.collections.concat([collection]),
+      });
+      this.setCurrentCollection(collection);
+    },
+    /**
+     * Recreates a collection under the same name with a new schema, keeping its documents.
+     * Needed for settings Typesense only accepts at creation (e.g. `enable_nested_fields`).
+     *
+     * The documents are first imported into a temporary collection with the new schema,
+     * which validates every document while the original is still untouched. Only then is
+     * the original dropped and recreated, and the temporary collection is kept until the
+     * final import succeeds, so the data always exists on the server.
+     */
+    async recreateCollection(payload: {
+      collectionName: string;
+      schema: CollectionCreateSchema;
+      keepBackup: boolean;
+      onProgress?: (message: string) => void;
+    }): Promise<RecreateCollectionResult> {
+      const api = this.api;
+      if (!api) throw new Error('Not connected');
+      const { collectionName, keepBackup } = payload;
+      const progress = payload.onProgress ?? (() => undefined);
+      const tempName = `${collectionName}__recreate_${Date.now()}`;
+      const legacyCurations = !this.data.features.synonymSets;
+
+      progress('Exporting documents');
+      const jsonl = (await api.exportDocuments(collectionName)) ?? '';
+      const documentCount = jsonl.split('\n').filter((l) => l.trim()).length;
+
+      // Before v30, synonyms and curations belong to the collection and are lost on drop.
+      let legacySynonyms: any[] = [];
+      let legacyOverrides: any[] = [];
+      if (legacyCurations) {
+        legacySynonyms = ((await api.getSynonyms(collectionName)) as any)?.synonyms ?? [];
+        legacyOverrides = ((await api.getOverrides(collectionName)) as any)?.overrides ?? [];
+      }
+
+      progress(`Validating ${documentCount} documents against the new schema`);
+      await api.createCollection(buildCreateSchema(payload.schema, tempName));
+      const tempFailures = await importJsonl(api, tempName, jsonl);
+      if (tempFailures.length) {
+        await api.dropCollection(tempName);
+        return { ok: false, documentCount, failures: tempFailures };
+      }
+
+      progress(`Replacing ${collectionName}`);
+      await api.dropCollection(collectionName);
+      try {
+        await api.createCollection(buildCreateSchema(payload.schema, collectionName));
+        progress(`Importing ${documentCount} documents`);
+        const failures = await importJsonl(api, collectionName, jsonl);
+        if (failures.length) {
+          await this.getCollections();
+          return { ok: false, documentCount, failures, backupName: tempName };
+        }
+        for (const { id, ...synonym } of legacySynonyms) {
+          await api.upsertSynonym(collectionName, id, synonym);
+        }
+        for (const { id, ...override } of legacyOverrides) {
+          await api.upsertOverride(collectionName, id, override);
+        }
+      } catch (error) {
+        await this.getCollections();
+        throw new Error(
+          `${(error as Error).message}. Your documents are safe in the collection \`${tempName}\`.`,
+          { cause: error },
+        );
+      }
+
+      if (!keepBackup) {
+        progress('Removing temporary copy');
+        await api.dropCollection(tempName);
+      }
+      await this.getCollections();
+      await this.refreshCollection(collectionName);
+      return {
+        ok: true,
+        documentCount,
+        failures: [],
+        ...(keepBackup ? { backupName: tempName } : {}),
+      };
     },
     async cloneCollectionSchema(payload: { collectionName: string; destinationName: string }) {
       try {
@@ -750,11 +868,7 @@ export const useNodeStore = defineStore('node', {
         void this.getCollections();
       }
     },
-    async createSynonym(payload: {
-      id: string;
-      synonym: SynonymCreateSchema;
-      setName?: string;
-    }) {
+    async createSynonym(payload: { id: string; synonym: SynonymCreateSchema; setName?: string }) {
       try {
         this.setError(null);
         if (this.data.features.synonymSets) {
@@ -842,7 +956,9 @@ export const useNodeStore = defineStore('node', {
     }) {
       try {
         this.setError(null);
-        const overridePayload = JSON.parse(JSON.stringify(payload.override)) as OverrideCreateSchema;
+        const overridePayload = JSON.parse(
+          JSON.stringify(payload.override),
+        ) as OverrideCreateSchema;
         if (!this.supportsCurationRuleTags && overridePayload.rule) {
           delete overridePayload.rule.tags;
         }
@@ -1044,7 +1160,7 @@ export const useNodeStore = defineStore('node', {
     },
     setCurrentNodeConfig(config: Partial<CustomNodeConfiguration>): void {
       const merged: CustomNodeConfiguration = {
-        ...(this.currentNodeConfig),
+        ...this.currentNodeConfig,
         ...(config as CustomNodeConfiguration),
       };
 

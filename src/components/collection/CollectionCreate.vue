@@ -20,20 +20,14 @@
 <script setup lang="ts">
 import type { CollectionCreateSchema } from 'typesense/lib/Typesense/Collections';
 import { useNodeStore } from '@/stores/node';
+import type { CollectionSchema } from 'typesense/lib/Typesense/Collection';
+import { buildCreateSchema } from '@/shared/schemaDiff';
 import CollectionUi from './CollectionUi.vue';
 
 const store = useNodeStore();
 
 function createCollection(schemaToCreate: CollectionCreateSchema) {
-  const schema = JSON.parse(JSON.stringify(schemaToCreate));
-  for (const field of schema.fields) {
-    if (field.type !== 'float[]' || !field.num_dim) {
-      delete field.num_dim;
-    }
-    if (field.type.startsWith('object')) {
-      schema.enable_nested_fields = true;
-    }
-  }
-  void store.createCollection(schema);
+  const schema = buildCreateSchema(schemaToCreate, schemaToCreate.name);
+  void store.createCollection(schema as CollectionSchema);
 }
 </script>
