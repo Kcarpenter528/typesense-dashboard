@@ -106,6 +106,11 @@ describe('startup snippets', () => {
     );
   });
 
+  it('escapes backslashes and quotes in docker compose values', () => {
+    const compose = toDockerCompose(options({ 'log-dir': 'C:\\logs\\"x"\\' }));
+    expect(compose).toContain('TYPESENSE_LOG_DIR: "C:\\\\logs\\\\\\"x\\"\\\\"');
+  });
+
   it('generates docker compose, env and config files', () => {
     const opts = options({ 'enable-cors': true });
     expect(toDockerCompose(opts)).toContain('      TYPESENSE_ENABLE_CORS: "true"');
