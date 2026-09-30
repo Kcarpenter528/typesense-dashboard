@@ -1,7 +1,6 @@
-import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron';
+import { BrowserWindow, app, ipcMain, shell } from 'electron';
 import path from 'node:path';
 import os from 'node:os';
-import fs from 'node:fs';
 import {
   registerQuasarRuntime,
   resolveElectronAssetsPath,
@@ -63,40 +62,6 @@ app.on('window-all-closed', () => {
 
 import { Api } from '../src/shared/api';
 const appApi = new Api();
-
-ipcMain.handle('importFile', async (events, collectionName, action) => {
-  const { filePaths } = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    filters: [{ name: 'JSON/JSONL', extensions: ['json', 'jsonl'] }],
-  });
-  if (filePaths && filePaths.length > 0) {
-    let documents = fs.readFileSync(filePaths[0] || '', 'utf8');
-    try {
-      documents = JSON.parse(documents);
-    } catch (e) {
-      console.error(e);
-      // assume jsonl
-    }
-    return appApi.importDocuments(collectionName, documents, action);
-  }
-});
-
-ipcMain.handle('importStemmingFile', async (events, id) => {
-  const { filePaths } = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    filters: [{ name: 'JSON/JSONL', extensions: ['json', 'jsonl'] }],
-  });
-  if (filePaths && filePaths.length > 0) {
-    let wordRootCombinations: string | any[] = fs.readFileSync(filePaths[0] || '', 'utf8');
-    try {
-      wordRootCombinations = JSON.parse(wordRootCombinations);
-    } catch (e) {
-      console.error(e);
-      // assume jsonl
-    }
-    return appApi.upsertStemmingDictionaries(id, wordRootCombinations);
-  }
-});
 
 // @ts-expect-error any
 function certErrorHandler(event, webContents, url, error, certificate, callback) {
