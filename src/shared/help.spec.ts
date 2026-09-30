@@ -7,6 +7,7 @@ import {
   PAGE_HELP,
   docUrl,
   docsVersion,
+  linkLabel,
   resolveTopic,
   serverFlagTopic,
 } from './help';
@@ -30,6 +31,23 @@ describe('docUrl', () => {
     expect(docUrl({ kind: 'guide', page: 'tips-for-filtering' }, '29.0')).toBe(
       'https://typesense.org/docs/guide/tips-for-filtering.html',
     );
+  });
+});
+
+describe('linkLabel', () => {
+  it('names an unlabelled link after its section or page', () => {
+    expect(linkLabel({ kind: 'api', page: 'search', anchor: 'facet-results' })).toBe(
+      'Facet results',
+    );
+    expect(linkLabel({ kind: 'guide', page: 'tips-for-filtering' })).toBe('Tips for filtering');
+    expect(linkLabel({ kind: 'api', page: 'joins', label: 'Joins' })).toBe('Joins');
+  });
+
+  it('never repeats a label within one topic', () => {
+    for (const [key, topic] of Object.entries({ ...PAGE_HELP, ...FIELD_HELP })) {
+      const labels = topic.links.map(linkLabel);
+      expect(new Set(labels).size, `${key}: ${labels.join(' | ')}`).toBe(labels.length);
+    }
   });
 });
 
