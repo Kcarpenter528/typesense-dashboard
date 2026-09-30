@@ -192,6 +192,14 @@ export const PAGE_HELP = {
       guide('locale', undefined, 'Languages and locales'),
     ],
   },
+  searchAnalytics: {
+    title: 'Search analytics',
+    body: 'Charts of what people search for and click, read from the collections your analytics rules write to: popular searches, searches that found nothing, and the documents with the most clicks. Typesense keeps totals, not a history, so there is no chart over time.',
+    links: [
+      api('analytics-query-suggestions', undefined, 'Analytics API'),
+      guide('search-analytics', undefined, 'Search analytics'),
+    ],
+  },
   analytics: {
     title: 'Analytics rules',
     body: 'Rules collect search and click events into collections: popular queries for suggestions, queries with no results, and counters that can boost popular documents.',

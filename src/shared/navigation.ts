@@ -36,6 +36,14 @@ export const NAV_SECTIONS: NavSection[] = [
         keywords: 'health metrics cpu memory',
       },
       {
+        label: 'Search analytics',
+        to: '/analytics',
+        help: 'searchAnalytics',
+        icon: 'sym_s_bar_chart',
+        keywords: 'charts popular queries no results searches insights',
+        available: (s) => s.data.features.analyticsRules,
+      },
+      {
         label: 'Settings',
         to: '/settings',
         help: 'settings',
