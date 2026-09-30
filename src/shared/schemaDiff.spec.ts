@@ -191,6 +191,81 @@ describe('diffSchema', () => {
     expect(diffSchema(original, edited).hasChanges).toBe(false);
   });
 
+  it('treats omitted reference, text and vector options as server defaults', () => {
+    // As returned by Typesense 30.2 for fields created with these options.
+    const original = serverCollection({
+      fields: [
+        serverField('author_id', 'string', {
+          optional: true,
+          reference: 'authors.aid',
+          async_reference: false,
+          cascade_delete: true,
+        }),
+        serverField('title', 'string', { token_separators: [], symbols_to_index: [] }),
+        serverField('vec', 'float[]', {
+          num_dim: 4,
+          vec_dist: 'cosine',
+          hnsw_params: { M: 8, ef_construction: 200 },
+        }),
+      ],
+    });
+    const edited = clone(original);
+    edited.fields[0] = {
+      name: 'author_id',
+      type: 'string',
+      optional: true,
+      reference: 'authors.aid',
+    };
+    edited.fields[1] = { name: 'title', type: 'string' };
+    edited.fields[2] = { name: 'vec', type: 'float[]', num_dim: 4, hnsw_params: { M: 8 } };
+    expect(diffSchema(original, edited).hasChanges).toBe(false);
+  });
+
+  it('detects changes to reference and vector options', () => {
+    const original = serverCollection({
+      fields: [
+        serverField('author_id', 'string', { optional: true, reference: 'authors.aid' }),
+        serverField('vec', 'float[]', { num_dim: 4, vec_dist: 'cosine' }),
+      ],
+    });
+    const edited = clone(original);
+    edited.fields[0].async_reference = true;
+    edited.fields[1].vec_dist = 'ip';
+    const plan = diffSchema(original, edited);
+    expect(plan.modified.map((m) => m.changes)).toEqual([
+      [{ key: 'async_reference', before: false, after: true }],
+      [{ key: 'vec_dist', before: 'cosine', after: 'ip' }],
+    ]);
+  });
+
+  it('ignores the server-derived dimensions of auto-embedding fields', () => {
+    const embed = { from: ['title'], model_config: { model_name: 'ts/all-MiniLM-L12-v2' } };
+    const original = serverCollection({
+      fields: [
+        serverField('title', 'string'),
+        serverField('embedding', 'float[]', { embed, num_dim: 384, vec_dist: 'cosine' }),
+      ],
+    });
+    const edited = clone(original);
+    edited.fields[1] = { name: 'embedding', type: 'float[]', embed };
+    expect(diffSchema(original, edited).hasChanges).toBe(false);
+  });
+
+  it('drops empty model settings from auto-embedding fields', () => {
+    const original = serverCollection();
+    const edited = clone(original);
+    edited.fields.push({
+      name: 'embedding',
+      type: 'float[]',
+      embed: { from: ['Id'], model_config: { model_name: 'ts/e5-small', api_key: '', url: '' } },
+    });
+    expect(diffSchema(original, edited).payload?.fields?.[0]).toEqual({
+      name: 'embedding',
+      type: 'float[]',
+      embed: { from: ['Id'], model_config: { model_name: 'ts/e5-small' } },
+    });
+  });
+
   it('reports validation errors', () => {
     const original = serverCollection();
     const edited = clone(original);
