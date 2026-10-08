@@ -1,0 +1,1 @@
+import{C as e}from"./runtime-core.esm-bundler-BnPmqoth.js";function t(){return e(`_q_`)}export{t};

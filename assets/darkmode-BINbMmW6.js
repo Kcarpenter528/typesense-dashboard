@@ -1,0 +1,1 @@
+import{G as e}from"./runtime-core.esm-bundler-BnPmqoth.js";import{o as t,t as n}from"./LocalStorage-CrYrz3mV.js";import{h as r}from"./index-NPKTEtoo.js";var i=`typesense-dark-mode`,a=r(()=>{let r=n.getItem(i);r!==null&&t.set(r),e(()=>t.isActive,e=>{n.set(i,e)})});export{a as default};

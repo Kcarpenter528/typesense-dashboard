@@ -1,0 +1,1 @@
+import{x as e}from"./runtime-core.esm-bundler-BnPmqoth.js";import{d as t}from"./event-B6GL6U7_.js";var n=t({name:`QSpace`,setup(){let t=e(`div`,{class:`q-space`});return()=>t}});export{n as t};
