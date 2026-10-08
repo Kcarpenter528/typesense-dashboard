@@ -53,7 +53,7 @@
     </aside>
   </div>
 
-  <div v-if="results" class="results-bar row items-center justify-between q-mt-md">
+  <div v-if="results" class="results-bar row items-center justify-between q-mt-md q-gutter-y-xs">
     <span class="ts-muted">
       <template v-if="results.hits">
         <strong>{{ (results.found ?? 0).toLocaleString() }}</strong> found ·
@@ -106,6 +106,7 @@ import { LocalStorage } from 'quasar';
 import { useCollectionsStore } from '@/stores/collections';
 import { useDocumentsStore } from '@/stores/documents';
 import { exportToJson } from '@/shared/download';
+import { referenceIncludeFields } from '@/shared/references';
 import MonacoEditor from '@/components/MonacoEditor.vue';
 import SearchResultItem from '@/components/search/SearchResultItem.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
@@ -127,7 +128,14 @@ function defaultParameters(): SearchParams<any> {
     )
     .map((f) => f.name)
     .join(',');
-  return { q: '*', ...(queryBy ? { query_by: queryBy } : {}), page: 1, per_page: 10 };
+  const include = referenceIncludeFields(fields);
+  return {
+    q: '*',
+    ...(queryBy ? { query_by: queryBy } : {}),
+    ...(include ? { include_fields: include } : {}),
+    page: 1,
+    per_page: 10,
+  };
 }
 
 function resetParameters() {
@@ -315,6 +323,9 @@ watch(
 
 .editor {
   height: 300px;
+  @media (max-width: 599px) {
+    height: 220px;
+  }
   display: flex;
 }
 

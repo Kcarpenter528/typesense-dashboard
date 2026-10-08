@@ -81,17 +81,16 @@
       <template #body-cell-delete="props">
         <q-td :props="props">
           <q-btn
-            flat
-            round
+            outline
             dense
+            no-caps
             size="sm"
+            color="negative"
             icon="sym_s_delete"
-            aria-label="Delete key"
-            class="ts-danger-hover"
+            label="Delete"
+            :aria-label="`Delete key ${props.row.value_prefix}`"
             @click="deleteApiKey(props.row)"
-          >
-            <q-tooltip>Delete</q-tooltip>
-          </q-btn>
+          />
         </q-td>
       </template>
       <template #no-data>
@@ -449,7 +448,12 @@ function deleteApiKey(key: KeySchema) {
     cancel: { flat: true, noCaps: true, label: 'Cancel' },
     ok: { unelevated: true, noCaps: true, color: 'negative', label: 'Delete key' },
   }).onOk(() => {
-    void apiKeysStore.remove(String(key.id));
+    apiKeysStore
+      .remove(String(key.id))
+      .then(() => $q.notify({ message: 'Key deleted', position: 'top', timeout: 1500 }))
+      .catch((error: Error) =>
+        $q.notify({ type: 'negative', message: `Could not delete the key: ${error.message}` }),
+      );
   });
 }
 
