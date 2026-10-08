@@ -26,7 +26,7 @@ export const useApiKeysStore = defineStore('apiKeys', {
     },
     async remove(id: string) {
       await useNodeStore().api?.deleteApiKey(id);
-      void this.load();
+      await this.load();
     },
   },
 });

@@ -58,7 +58,7 @@ const tab = ref(route.query.mode === 'ask' ? 'ask' : 'form');
 
 .ais-Hits-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
   gap: 12px;
   margin: 0;
 }
@@ -72,6 +72,8 @@ const tab = ref(route.query.mode === 'ask' ? 'ask' : 'form');
   display: flex;
   flex-direction: column;
   background: var(--ts-sheet);
+  // The InstantSearch base theme sets its own text color on hits.
+  color: var(--ts-ink);
   border: 1px solid var(--ts-rule);
   border-radius: 12px;
   box-shadow: none !important;
@@ -79,9 +81,5 @@ const tab = ref(route.query.mode === 'ask' ? 'ask' : 'form');
   &:hover {
     border-color: var(--ts-rule-strong);
   }
-}
-
-.ais-Hits-item .text-body2 [class^='ais-'] {
-  font-size: 0.875rem !important;
 }
 </style>

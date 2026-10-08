@@ -7,104 +7,117 @@
     class="search"
   >
     <ais-configure :hits-per-page.camel="12" />
-    <ais-search-box v-slot="{ currentRefinement, refine }">
-      <debounced-search-box :model-value="currentRefinement" @refine="refine" />
-    </ais-search-box>
-    <div class="search__meta row items-center justify-between q-mt-sm">
+    <div class="search__bar">
+      <ais-search-box v-slot="{ currentRefinement, refine }">
+        <debounced-search-box :model-value="currentRefinement" @refine="refine" />
+      </ais-search-box>
+      <ais-current-refinements v-slot="{ items }">
+        <q-btn
+          outline
+          no-caps
+          class="search__filters-toggle"
+          icon="sym_s_tune"
+          :label="$q.screen.gt.xs ? 'Filters and sort' : undefined"
+          aria-label="Filters and sort"
+          :aria-expanded="filtersOpen"
+          aria-controls="search-filters"
+          @click="filtersOpen = !filtersOpen"
+        >
+          <q-badge v-if="items.length" rounded color="primary" class="q-ml-sm">
+            {{ items.length }}
+          </q-badge>
+        </q-btn>
+      </ais-current-refinements>
+    </div>
+
+    <!-- Kept mounted while closed so a refinement isn't dropped when the panel is hidden. -->
+    <section v-show="filtersOpen" id="search-filters" class="ts-sheet filters">
+      <div class="filters__group">
+        <div class="ts-eyebrow q-mb-xs">Sort</div>
+        <ais-sort-by :items="sortBy" />
+        <div class="ts-eyebrow q-mt-md q-mb-xs">Results per page</div>
+        <ais-hits-per-page
+          :items="[
+            { label: '12', value: 12, default: true },
+            { label: '48', value: 48 },
+            { label: '100', value: 100 },
+            { label: '250', value: 250 },
+          ]"
+        />
+      </div>
+
+      <div
+        v-for="name in [...facetStringFields, ...facetBooleanFields]"
+        :key="name"
+        class="filters__group"
+      >
+        <div class="facet-title text-mono">{{ name }}</div>
+        <ais-refinement-list
+          :searchable="facetStringFields.includes(name)"
+          :attribute="name"
+          :searchable-placeholder="`Find a ${name}`"
+        />
+      </div>
+
+      <div v-for="name in facetNumberFields" :key="name" class="filters__group">
+        <div class="facet-title text-mono">{{ name }}</div>
+        <ais-range-input :attribute="name" />
+      </div>
+
+      <div class="filters__group">
+        <div class="ts-eyebrow q-mb-xs">Stopwords</div>
+        <q-select
+          v-model="currentStopwordsSet"
+          :disable="!store.data.features.stopwords"
+          outlined
+          clearable
+          dense
+          options-dense
+          placeholder="None"
+          :options="stopwords"
+          @update:model-value="updateTypesenseAdapterConfiguration()"
+        />
+        <div class="ts-eyebrow q-mt-md q-mb-xs">Max candidates</div>
+        <q-input
+          v-model.number="maxCandidates"
+          type="number"
+          outlined
+          dense
+          :min="0"
+          :max="10000"
+          hint="Similar words considered for prefix and typo matches."
+          @update:model-value="updateTypesenseAdapterConfiguration()"
+        />
+      </div>
+    </section>
+
+    <div class="search__meta">
       <ais-stats v-slot="{ nbHits, processingTimeMS }">
         <span class="ts-muted">
           <strong>{{ nbHits.toLocaleString() }}</strong> results · {{ processingTimeMS }} ms
         </span>
       </ais-stats>
-      <ais-current-refinements />
+      <ais-current-refinements class="search__chips" />
+      <q-btn
+        flat
+        dense
+        no-caps
+        size="sm"
+        icon="sym_s_download"
+        label="Export this page"
+        class="search__export"
+        @click="exportPage()"
+      />
     </div>
 
-    <div class="search__layout">
-      <aside class="search__filters">
-        <div class="ts-sheet filters-card">
-          <div class="ts-eyebrow q-mb-xs">Sort</div>
-          <ais-sort-by :items="sortBy" />
-          <div class="ts-eyebrow q-mt-md q-mb-xs">Results per page</div>
-          <ais-hits-per-page
-            :items="[
-              { label: '12', value: 12, default: true },
-              { label: '48', value: 48 },
-              { label: '100', value: 100 },
-              { label: '250', value: 250 },
-            ]"
-          />
-          <q-btn
-            flat
-            dense
-            no-caps
-            size="sm"
-            icon="sym_s_download"
-            label="Export this page as JSON"
-            class="q-mt-sm"
-            @click="exportPage()"
-          />
-        </div>
-
-        <div
-          v-for="name in [...facetStringFields, ...facetBooleanFields]"
-          :key="name"
-          class="ts-sheet filters-card"
-        >
-          <div class="facet-title text-mono">{{ name }}</div>
-          <ais-refinement-list
-            :searchable="facetStringFields.includes(name)"
-            :attribute="name"
-            :searchable-placeholder="`Find a ${name}`"
-          />
-        </div>
-
-        <div v-for="name in facetNumberFields" :key="name" class="ts-sheet filters-card">
-          <div class="facet-title text-mono">{{ name }}</div>
-          <ais-range-input :attribute="name" />
-        </div>
-
-        <q-expansion-item
-          dense
-          switch-toggle-side
-          class="ts-sheet filters-card"
-          header-class="q-px-none ts-muted"
-          label="Tuning"
-        >
-          <div class="ts-eyebrow q-mt-sm q-mb-xs">Stopwords</div>
-          <q-select
-            v-model="currentStopwordsSet"
-            :disable="!store.data.features.stopwords"
-            outlined
-            clearable
-            dense
-            options-dense
-            placeholder="None"
-            :options="stopwords"
-            @update:model-value="updateTypesenseAdapterConfiguration()"
-          />
-          <div class="ts-eyebrow q-mt-md q-mb-xs">Max candidates</div>
-          <q-input
-            v-model.number="maxCandidates"
-            type="number"
-            outlined
-            dense
-            :min="0"
-            :max="10000"
-            hint="Similar words considered for prefix and typo matches."
-            @update:model-value="updateTypesenseAdapterConfiguration()"
-          />
-        </q-expansion-item>
-      </aside>
-
-      <section class="search__results">
-        <ais-hits>
-          <template v-if="currentCollection" #item="{ item }">
-            <search-result-item :item="item" @deleted="instantSearchInstance.refresh()" />
-          </template>
-        </ais-hits>
-        <ais-pagination class="q-my-lg" />
-      </section>
-    </div>
+    <section class="search__results">
+      <ais-hits>
+        <template v-if="currentCollection" #item="{ item }">
+          <search-result-item :item="item" @deleted="instantSearchInstance.refresh()" />
+        </template>
+      </ais-hits>
+      <ais-pagination class="q-my-lg" />
+    </section>
   </ais-instant-search>
   <div v-else-if="searchClientError" class="error-card">
     {{ searchClientError }}
@@ -117,6 +130,7 @@ import { useNodeStore } from '@/stores/node';
 import { useCollectionsStore } from '@/stores/collections';
 import { useStopwordsStore } from '@/stores/stopwords';
 import { exportToJson } from '@/shared/download';
+import { referenceIncludeFields } from '@/shared/references';
 import SearchResultItem from '@/components/search/SearchResultItem.vue';
 import DebouncedSearchBox from '@/components/search/DebouncedSearchBox.vue';
 import TypesenseInstantSearchAdapter from 'typesense-instantsearch-adapter';
@@ -132,6 +146,7 @@ const instantSearchInstance = ref<any>();
 const searchClientError = ref<string | null>(null);
 const currentStopwordsSet = ref(null);
 const maxCandidates = ref(4);
+const filtersOpen = ref(false);
 
 const middlewares = [
   ({ instantSearchInstance: instance }: any) => {
@@ -239,6 +254,7 @@ watch(
         .filter((f) => f.index && ['string', 'string[]'].includes(f.type) && !f.name.includes('.*'))
         .map((f) => f.name)
         .join(',');
+      const include_fields = referenceIncludeFields(currentCollection.value?.fields);
 
       try {
         const serverConfig: ConfigurationOptions = {
@@ -253,6 +269,7 @@ watch(
           additionalSearchParameters: {
             max_candidates: maxCandidates.value,
             query_by,
+            ...(include_fields ? { include_fields } : {}),
           },
         });
         typesenseInstantsearchAdapter.value = adapter;
@@ -268,25 +285,39 @@ watch(
 </script>
 
 <style lang="scss" scoped>
-.search__layout {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 20px;
-  margin-top: 16px;
-  align-items: start;
-  @media (max-width: 1023px) {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.search__bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
-.search__filters {
-  display: grid;
-  gap: 12px;
+.search__bar > .ais-SearchBox {
+  flex: 1;
   min-width: 0;
 }
 
-.filters-card {
-  padding: 12px 14px;
+.search__filters-toggle {
+  flex: none;
+  height: 40px;
+  color: var(--ts-ink);
+  border-color: var(--ts-rule-strong);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px 28px;
+  align-items: start;
+  margin-top: 12px;
+  padding: 16px 20px;
+  @media (max-width: 599px) {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px 16px;
+  }
+}
+
+.filters__group {
+  min-width: 0;
 }
 
 .facet-title {
@@ -296,11 +327,25 @@ watch(
 }
 
 .search__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
   min-height: 28px;
+  margin: 14px 0 12px;
   font-size: 0.85rem;
   strong {
     color: var(--ts-ink);
   }
+}
+
+.search__chips {
+  flex: 1;
+  min-width: 0;
+}
+
+.search__export {
+  margin-left: auto;
 }
 
 .error-card {
