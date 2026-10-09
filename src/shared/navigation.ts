@@ -99,6 +99,13 @@ export const NAV_SECTIONS: NavSection[] = [
         available: (s) => s.data.features.curationSets,
       },
       {
+        label: 'Search lab',
+        to: '/searchlab',
+        help: 'searchLab',
+        icon: 'sym_s_science',
+        keywords: 'multi search tune relevance weights typos query_by compare test playground',
+      },
+      {
         label: 'Search presets',
         to: '/searchpresets',
         help: 'presets',

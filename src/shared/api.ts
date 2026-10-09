@@ -367,6 +367,17 @@ export class Api {
     );
   }
 
+  /**
+   * Runs several searches in one `/multi_search` request. `commonParams` go in the
+   * query string and apply to every search unless a search sets its own.
+   */
+  public multiSearchMany(
+    searches: Record<string, unknown>[],
+    commonParams: Record<string, unknown>,
+  ) {
+    return this.typesenseClient?.multiSearch.perform({ searches } as never, commonParams);
+  }
+
   public createSnapshot(snapshotPath: string) {
     return this.typesenseClient?.operations.perform('snapshot', { snapshot_path: snapshotPath });
   }

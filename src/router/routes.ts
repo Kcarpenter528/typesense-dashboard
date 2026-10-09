@@ -40,6 +40,11 @@ const routes: RouteRecordRaw[] = [
         meta: { help: 'analytics' },
       },
       {
+        path: 'searchlab',
+        component: () => import('@/pages/SearchLab.vue'),
+        meta: { help: 'searchLab' },
+      },
+      {
         path: 'searchpresets',
         component: () => import('@/pages/SearchPresets.vue'),
         meta: { help: 'presets' },

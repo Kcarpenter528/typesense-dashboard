@@ -133,6 +133,16 @@ export const PAGE_HELP = {
       guide('ranking-and-relevance', undefined, 'Ranking and relevance'),
     ],
   },
+  searchLab: {
+    title: 'Search lab',
+    body: 'Try one query across several collections at once and tune how each is searched: which fields count most, how forgiving typos are, filters and sorting. When the results look right, copy the exact request as code for your app, or save it as a search preset.',
+    links: [
+      api('federated-multi-search', undefined, 'Federated multi-search'),
+      api('federated-multi-search', 'multi-search-parameters', 'Multi-search parameters'),
+      api('search', 'search-parameters', 'Search parameters'),
+      guide('ranking-and-relevance', undefined, 'Ranking and relevance'),
+    ],
+  },
   aliases: {
     title: 'Aliases',
     body: 'An alias is a second name that points to a collection. Search the alias from your app, rebuild into a new collection, then move the alias with no downtime.',
@@ -597,6 +607,31 @@ export const FIELD_HELP = {
     title: 'Verify the TLS certificate',
     body: 'Desktop app only. Turn off for servers with a self-signed certificate you trust.',
     links: [api('server-configuration', 'ssl-https')],
+  },
+
+  // Search lab
+  'lab.query_by': {
+    title: 'Fields and weights',
+    body: 'The fields searched, in priority order. A match in a higher-weighted field ranks above a match in a lower one. Until you move a slider Typesense weights by order; after that the sliders decide.',
+    links: [
+      api('search', 'query-parameters'),
+      guide('ranking-and-relevance', undefined, 'Ranking and relevance'),
+    ],
+  },
+  'lab.baseline': {
+    title: 'Baseline',
+    body: 'Pin the current results, change a setting, and every result shows how far it moved: up, down, new, or dropped out. It answers “did that change help?”.',
+    links: [guide('ranking-and-relevance', undefined, 'Ranking and relevance')],
+  },
+  'lab.tests': {
+    title: 'Test queries',
+    body: 'Queries with the documents that should come back near the top. Run them all after each tweak to see that a fix for one search has not broken another. Saved in this browser.',
+    links: [guide('ranking-and-relevance', undefined, 'Ranking and relevance')],
+  },
+  'lab.common': {
+    title: 'All collections',
+    body: 'Settings sent once for the whole request. A collection’s own setting overrides it, so set the default here and exceptions on the collection.',
+    links: [api('federated-multi-search', 'multi-search-parameters', 'Multi-search parameters')],
   },
 
   // Relevance extras
