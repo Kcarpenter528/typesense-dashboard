@@ -1,0 +1,1 @@
+import{C as e}from"./index-CGAKDAtf.js";import{o as t,t as n}from"./LocalStorage-Cr00lt6M.js";import{G as r}from"./runtime-core.esm-bundler-BCN3Bt0u.js";var i=`typesense-dark-mode`,a=e(()=>{let e=n.getItem(i);e!==null&&t.set(e),r(()=>t.isActive,e=>{n.set(i,e)})});export{a as default};
